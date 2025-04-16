@@ -1,31 +1,30 @@
 package DiskHouse.view.model.entity;
 
 public class Musique {
-    List<Artiste> Artistes
-    private final String Titre;
+    private List<Artiste> artistes;
+    private final String titre;
     private Album album;
-    private float Durée;
+    private float duree;
 
-
-    public Musique(String titres, float duree, Album album, List<Artiste> artiste) {
-        SetTitle(titre);
-        SetDuree(duree);
-        SetAlbum(album);
-        setArtistes(artiste);
+    public Musique(String titre, float duree, Album album, List<Artiste> artistes) {
+        this.titre = titre;
+        this.duree = duree;
+        this.album = album;
+        this.artistes = artistes;
     }
 
     /*------------------------------------------------------------------------*/
     /*----------------------------Ensemble des set----------------------------*/
     /*------------------------------------------------------------------------*/
 
-    public void SetTitle(String titre)
-    {
-        Titre = titre;
+    public void setTitre(String titre) {
+        this.titre = titre;
     }
-    public void SetDuree(float duree)
-    {
-        Duree = duree;
+
+    public void setDuree(float duree) {
+        this.duree = duree;
     }
+
     public void setAlbum(Album album) {
         this.album = album;
     }
@@ -33,7 +32,6 @@ public class Musique {
     public void setArtistes(List<Artiste> artistes) {
         this.artistes = artistes;
     }
-
 
     /*------------------------------------------------------------------------*/
     /*----------------------------Ensemble des get----------------------------*/
@@ -64,10 +62,10 @@ public class Musique {
     @Override
     public String toString()
     {
-        String AllArtist = ""
+        String AllArtist = "";
         for(i = 0; i< getArtiste().size();i++)
         {
-            AllArtist = AllArtist +  artiste.get(i).getNom() + ","
+            AllArtist = AllArtist +  artiste.get(i).getNom() + ",";
         }
 
         return "Musique" + getTitre() + "Album " + getAlbum() + "De " + Allartist;
@@ -84,7 +82,4 @@ public class Musique {
                 Double.compare(Duree, song.Duree) == 0 &&
                 Album.equals(song.Album);
     }
-
-
-
 }
