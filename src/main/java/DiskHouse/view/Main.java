@@ -1,4 +1,4 @@
-package org.example;
+package DiskHouse.view;
 
 public class Main {
     public static void main(String[] args) {

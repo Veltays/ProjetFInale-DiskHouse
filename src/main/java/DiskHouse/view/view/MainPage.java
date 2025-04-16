@@ -1,10 +1,10 @@
-package GUI;
+package DiskHouse.view.view;
 
 import javax.swing.*;
 
 
 public class MainPage extends JFrame {
-    private JPanel MainWindow;    // Le panel transparent
+    private JPanel MainWindow;
     private JTable tablePlaylist;
     private JTable TablePlaylist;
     private JPanel InfoBouton;
@@ -25,7 +25,7 @@ public class MainPage extends JFrame {
 
 
     public MainPage() {
-        setTitle("DiskHouse ");
+        setTitle("main ");
         setContentPane(MainWindow); //  on définit bien Fond comme conteneur
         setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
