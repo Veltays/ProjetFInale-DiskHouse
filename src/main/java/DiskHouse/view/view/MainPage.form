@@ -74,6 +74,7 @@
                     </constraints>
                     <properties>
                       <background color="-15981973"/>
+                      <enabled value="true"/>
                       <font name="Britannic Bold" size="72" style="1"/>
                       <foreground color="-15981973"/>
                       <text value="PlaylistName"/>
