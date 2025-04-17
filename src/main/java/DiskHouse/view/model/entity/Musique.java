@@ -1,16 +1,17 @@
 package DiskHouse.view.model.entity;
+import java.util.List;
 
 public class Musique {
-    private List<Artiste> artistes;
-    private final String titre;
-    private Album album;
-    private float duree;
+    private List<Artiste> Artistes;
+    private String Titre;
+    private Album Album;
+    private float Duree;
 
     public Musique(String titre, float duree, Album album, List<Artiste> artistes) {
-        this.titre = titre;
-        this.duree = duree;
-        this.album = album;
-        this.artistes = artistes;
+        setTitre(titre);
+        setDuree(duree);
+        setAlbum(album);
+        setArtistes(artistes);
     }
 
     /*------------------------------------------------------------------------*/
@@ -18,19 +19,19 @@ public class Musique {
     /*------------------------------------------------------------------------*/
 
     public void setTitre(String titre) {
-        this.titre = titre;
+        this.Titre = titre;
     }
 
     public void setDuree(float duree) {
-        this.duree = duree;
+        this.Duree = duree;
     }
 
     public void setAlbum(Album album) {
-        this.album = album;
+        this.Album = album;
     }
 
     public void setArtistes(List<Artiste> artistes) {
-        this.artistes = artistes;
+        this.Artistes = artistes;
     }
 
     /*------------------------------------------------------------------------*/
@@ -38,38 +39,46 @@ public class Musique {
     /*------------------------------------------------------------------------*/
 
     public String getTitre() {
-        return titre;
+        return Titre;
     }
 
     public float getDuree() {
-        return duree;
+        return Duree;
     }
 
     public Album getAlbum() {
-        return album;
+        return Album;
     }
 
     public List<Artiste> getArtistes() {
-        return artistes;
+        return Artistes;
     }
-
 
 
     /*---------------------------------------*/
     /*------------MéthodeBasique------------ */
     /*---------------------------------------*/
 
-    @Override
-    public String toString()
-    {
-        String AllArtist = "";
-        for(i = 0; i< getArtiste().size();i++)
-        {
-            AllArtist = AllArtist +  artiste.get(i).getNom() + ",";
-        }
 
-        return "Musique" + getTitre() + "Album " + getAlbum() + "De " + Allartist;
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Musique [\n");
+        sb.append("  Titre  : ").append(Titre).append("\n");
+        sb.append("  Durée  : ").append(Duree).append("\n");
+        if (Album != null) {
+            sb.append("  Album  : ").append(Album.getTitreAlbum()).append(" (").append(Album.getDateSortie()).append(")\n");
+        } else {
+            sb.append("  Album  : null\n");
+        }
+        sb.append("  Artistes : ");
+        for (Artiste artiste : Artistes) {
+            sb.append(artiste.getNom()).append(", ");
+        }
+        sb.append("\n]");
+        return sb.toString();
     }
+
 
     @Override
     public boolean equals(Object o) {
@@ -78,8 +87,8 @@ public class Musique {
         if (o == null || getClass() != o.getClass()) // Si l'objet est null, ou que sa classe et différente de la mienne alors on n'est pas egaux
             return false;
         Musique song = (Musique) o;
-        return Titre.equals(song.Titre) &&
-                Double.compare(Duree, song.Duree) == 0 &&
-                Album.equals(song.Album);
+        return getTitre().equals(song.getTitre()) &&
+                Float.compare(getDuree(), song.getDuree()) == 0 &&
+                getAlbum().equals(song.getAlbum());
     }
 }
