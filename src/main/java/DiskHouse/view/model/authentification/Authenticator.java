@@ -8,6 +8,8 @@ public abstract class Authenticator {
         }
         return false;
     }
+
     protected abstract boolean isLoginExists(String username);
     protected abstract String getPassword(String username);
+    protected abstract boolean register(String username, String password);
 }

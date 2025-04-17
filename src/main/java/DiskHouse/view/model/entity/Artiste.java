@@ -2,7 +2,7 @@ package DiskHouse.view.model.entity;
 
 import java.util.List;
 
-public class Artiste {
+public class Artiste extends Identifier {
     private String Nom;
     private String Prenom;
     private String Pseudo;
@@ -10,6 +10,7 @@ public class Artiste {
 
     // Constructeur
     public Artiste(String Nom, String Prenom, String Pseudo, List<Album> Albums) {
+        super();
         this.Nom = Nom;
         this.Prenom = Prenom;
         this.Pseudo = Pseudo;
@@ -64,9 +65,10 @@ public class Artiste {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Artiste [\n");
-        sb.append("  Nom     : ").append(Nom).append("\n");
-        sb.append("  Prénom  : ").append(Prenom).append("\n");
-        sb.append("  Pseudo  : ").append(Pseudo).append("\n");
+        sb.append("  Id     : ").append(getId()).append("\n");
+        sb.append("  Nom     : ").append(getNom()).append("\n");
+        sb.append("  Prénom  : ").append(getPrenom()).append("\n");
+        sb.append("  Pseudo  : ").append(getPseudo()).append("\n");
         sb.append("  Albums  :\n");
         for (Album album : Albums) {
             sb.append("    - ").append(album.getTitreAlbum()).append("\n");

@@ -25,7 +25,7 @@ public class MainPage extends JFrame {
 
 
     public MainPage() {
-        setTitle("main ");
+        setTitle("DiskHouse");
         setContentPane(MainWindow); //  on définit bien Fond comme conteneur
         setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

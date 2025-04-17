@@ -4,16 +4,16 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
-public class Album {
+public class Album extends Identifier {
     private String TitreAlbum;
     private int DateSortie;
     private List<Musique> Musiques;
 
 
-
     // Constructeur
     public Album(String titreAlbum, int dateSortie, List<Musique> musiques)
     {
+        super();
         this.TitreAlbum = titreAlbum;
         this.DateSortie = dateSortie;
         this.Musiques = musiques;
@@ -61,8 +61,9 @@ public class Album {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Album [\n");
-        sb.append("  Titre : ").append(TitreAlbum).append("\n");
-        sb.append("  Date  : ").append(DateSortie).append("\n");
+        sb.append("  Id     : ").append(getId()).append("\n");
+        sb.append("  Titre : ").append(getTitreAlbum()).append("\n");
+        sb.append("  Date  : ").append(getDateSortie()).append("\n");
         sb.append("  Musiques : ");
         for (Musique m : Musiques) {
             sb.append(m.getTitre()).append(", ");

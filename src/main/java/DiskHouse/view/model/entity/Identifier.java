@@ -1,18 +1,27 @@
 package DiskHouse.view.model.entity;
 
 public class Identifier {
+    private static int globalId = 1;  // Compteur partagé par toutes les sous-classes
     private int id;
 
-    public Identifier(int id) {
-        setId(id);
+    public Identifier()
+    {
+        this.id = globalId++;
     }
 
-    public int getId() {
+    public int getId()
+    {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(int id)
+    {
         this.id = id;
+    }
+
+    @Override
+    public String toString() {
+        return "ID: " + id;
     }
 }
 

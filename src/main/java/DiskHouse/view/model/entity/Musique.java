@@ -1,13 +1,14 @@
 package DiskHouse.view.model.entity;
 import java.util.List;
 
-public class Musique {
+public class Musique extends Identifier {
     private List<Artiste> Artistes;
     private String Titre;
     private Album Album;
     private float Duree;
 
     public Musique(String titre, float duree, Album album, List<Artiste> artistes) {
+        super();
         setTitre(titre);
         setDuree(duree);
         setAlbum(album);
@@ -64,8 +65,9 @@ public class Musique {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Musique [\n");
-        sb.append("  Titre  : ").append(Titre).append("\n");
-        sb.append("  Durée  : ").append(Duree).append("\n");
+        sb.append("  Id     : ").append(getId()).append("\n");
+        sb.append("  Titre  : ").append(getTitre()).append("\n");
+        sb.append("  Durée  : ").append(getDuree()).append("\n");
         if (Album != null) {
             sb.append("  Album  : ").append(Album.getTitreAlbum()).append(" (").append(Album.getDateSortie()).append(")\n");
         } else {
