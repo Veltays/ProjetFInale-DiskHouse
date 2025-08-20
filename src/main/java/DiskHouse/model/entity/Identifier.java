@@ -1,21 +1,18 @@
-package DiskHouse.view.model.entity;
+package DiskHouse.model.entity;
 
-public class Identifier {
+public abstract class Identifier {
     private static int globalId = 1;  // Compteur partagé par toutes les sous-classes
     private int id;
 
-    public Identifier()
-    {
+    public Identifier() {
         this.id = globalId++;
     }
 
-    public int getId()
-    {
+    public int getId() {
         return id;
     }
 
-    public void setId(int id)
-    {
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -24,5 +21,3 @@ public class Identifier {
         return "ID: " + id;
     }
 }
-
-

@@ -1,4 +1,4 @@
-package DiskHouse.view.model.authentification;
+package DiskHouse.model.authentification;
 
 public abstract class Authenticator {
     public boolean authenticate(String username, String password) {

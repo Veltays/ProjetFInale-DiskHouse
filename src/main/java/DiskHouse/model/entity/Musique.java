@@ -1,11 +1,15 @@
-package DiskHouse.view.model.entity;
+package DiskHouse.model.entity;
 import java.util.List;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 
 public class Musique extends Identifier {
-    private List<Artiste> Artistes;
-    private String Titre;
-    private Album Album;
-    private float Duree;
+    private List<Artiste> artistes;
+    private String titre;
+    private Album album;
+    private float duree;
 
     public Musique(String titre, float duree, Album album, List<Artiste> artistes) {
         super();
@@ -20,19 +24,19 @@ public class Musique extends Identifier {
     /*------------------------------------------------------------------------*/
 
     public void setTitre(String titre) {
-        this.Titre = titre;
+        this.titre = titre;
     }
 
     public void setDuree(float duree) {
-        this.Duree = duree;
+        this.duree = duree;
     }
 
     public void setAlbum(Album album) {
-        this.Album = album;
+        this.album = album;
     }
 
     public void setArtistes(List<Artiste> artistes) {
-        this.Artistes = artistes;
+        this.artistes = artistes;
     }
 
     /*------------------------------------------------------------------------*/
@@ -40,21 +44,20 @@ public class Musique extends Identifier {
     /*------------------------------------------------------------------------*/
 
     public String getTitre() {
-        return Titre;
+        return titre;
     }
 
     public float getDuree() {
-        return Duree;
+        return duree;
     }
 
     public Album getAlbum() {
-        return Album;
+        return album;
     }
 
     public List<Artiste> getArtistes() {
-        return Artistes;
+        return artistes;
     }
-
 
     /*---------------------------------------*/
     /*------------MéthodeBasique------------ */
@@ -63,34 +66,34 @@ public class Musique extends Identifier {
 
     @Override
     public String toString() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy");
+        String formattedDate = (album != null && album.getDateSortie() != null) ? sdf.format(album.getDateSortie()) : "inconnu";
+
         StringBuilder sb = new StringBuilder();
-        sb.append("Musique [\n");
-        sb.append("  Id     : ").append(getId()).append("\n");
-        sb.append("  Titre  : ").append(getTitre()).append("\n");
-        sb.append("  Durée  : ").append(getDuree()).append("\n");
-        if (Album != null) {
-            sb.append("  Album  : ").append(Album.getTitreAlbum()).append(" (").append(Album.getDateSortie()).append(")\n");
-        } else {
-            sb.append("  Album  : null\n");
-        }
-        sb.append("  Artistes : ");
-        for (Artiste artiste : Artistes) {
+        sb.append("Musique [\n")
+                .append("  Id     : ").append(getId()).append("\n")
+                .append("  Titre  : ").append(getTitre()).append("\n")
+                .append("  Durée  : ").append(getDuree()).append("\n")
+                .append("  Album  : ").append(album != null ? album.getTitreAlbum() + " (" + formattedDate + ")" : "inconnu").append("\n")
+                .append("  Artistes : ");
+
+        for (Artiste artiste : getArtistes()) {
             sb.append(artiste.getNom()).append(", ");
         }
         sb.append("\n]");
         return sb.toString();
     }
 
-
     @Override
     public boolean equals(Object o) {
         if (this == o)
-            return true;   // Si l'objet est lui même alors il sont égaux
-        if (o == null || getClass() != o.getClass()) // Si l'objet est null, ou que sa classe et différente de la mienne alors on n'est pas egaux
+            return true;
+        if (o == null || getClass() != o.getClass())
             return false;
-        Musique song = (Musique) o;
-        return getTitre().equals(song.getTitre()) &&
-                Float.compare(getDuree(), song.getDuree()) == 0 &&
-                getAlbum().equals(song.getAlbum());
+        Musique musique = (Musique) o;
+        return Float.compare(musique.duree, duree) == 0 &&
+                titre.equals(musique.titre) &&
+                (album != null ? album.equals(musique.album) : musique.album == null) && // Comparaison des albums
+                artistes.equals(musique.artistes);
     }
 }

@@ -1,4 +1,4 @@
-package DiskHouse.view.model.authentification;
+package DiskHouse.model.authentification;
 
 import java.util.HashMap;
 import java.util.Map;

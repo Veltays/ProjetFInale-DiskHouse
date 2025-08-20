@@ -1,4 +1,4 @@
-package DiskHouse.view.view;
+package DiskHouse.view;
 import javax.swing.*;
 
 

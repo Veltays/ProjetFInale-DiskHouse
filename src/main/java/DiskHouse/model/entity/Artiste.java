@@ -1,20 +1,20 @@
-package DiskHouse.view.model.entity;
+package DiskHouse.model.entity;
 
 import java.util.List;
 
 public class Artiste extends Identifier {
-    private String Nom;
-    private String Prenom;
-    private String Pseudo;
-    private List<Album> Albums;
+    private String nom;
+    private String prenom;
+    private String pseudo;
+    private List<Album> albums;
 
     // Constructeur
-    public Artiste(String Nom, String Prenom, String Pseudo, List<Album> Albums) {
+    public Artiste(String nom, String prenom, String pseudo, List<Album> albums) {
         super();
-        this.Nom = Nom;
-        this.Prenom = Prenom;
-        this.Pseudo = Pseudo;
-        this.Albums = Albums;
+        this.nom = nom;
+        this.prenom = prenom;
+        this.pseudo = pseudo;
+        this.albums = albums;
     }
 
     /*--------------------------------------------*/
@@ -22,19 +22,19 @@ public class Artiste extends Identifier {
     /*--------------------------------------------*/
 
     public String getNom() {
-        return Nom;
+        return nom;
     }
 
     public String getPrenom() {
-        return Prenom;
+        return prenom;
     }
 
     public String getPseudo() {
-        return Pseudo;
+        return pseudo;
     }
 
     public List<Album> getAlbums() {
-        return Albums;
+        return albums;
     }
 
     /*--------------------------------------------*/
@@ -42,19 +42,19 @@ public class Artiste extends Identifier {
     /*--------------------------------------------*/
 
     public void setNom(String nom) {
-        this.Nom = nom;
+        this.nom = nom;
     }
 
     public void setPrenom(String prenom) {
-        this.Prenom = prenom;
+        this.prenom = prenom;
     }
 
     public void setPseudo(String pseudo) {
-        this.Pseudo = pseudo;
+        this.pseudo = pseudo;
     }
 
     public void setAlbums(List<Album> albums) {
-        this.Albums = albums;
+        this.albums = albums;
     }
 
     /*--------------------------------------------*/
@@ -70,13 +70,12 @@ public class Artiste extends Identifier {
         sb.append("  Prénom  : ").append(getPrenom()).append("\n");
         sb.append("  Pseudo  : ").append(getPseudo()).append("\n");
         sb.append("  Albums  :\n");
-        for (Album album : Albums) {
+        for (Album album : albums) {
             sb.append("    - ").append(album.getTitreAlbum()).append("\n");
         }
         sb.append("]");
         return sb.toString();
     }
-
 
     /*--------------------------------------------*/
     /*--------------------- equals ---------------*/
@@ -84,13 +83,15 @@ public class Artiste extends Identifier {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Artiste artiste = (Artiste) o;
-        return Nom.equals(artiste.Nom) &&
-                Prenom.equals(artiste.Prenom) &&
-                Pseudo.equals(artiste.Pseudo) &&
-                Albums.equals(artiste.Albums);
-    }
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
 
+        Artiste artiste = (Artiste) o;
+        return nom.equals(artiste.nom) &&
+                prenom.equals(artiste.prenom) &&
+                pseudo.equals(artiste.pseudo) &&
+                albums.equals(artiste.albums);
+    }
 }
