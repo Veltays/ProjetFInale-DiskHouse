@@ -1,48 +1,31 @@
 package DiskHouse.model.entity;
-import java.util.List;
-import java.util.Date;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class Musique extends Identifier {
-    private List<Artiste> artistes;
     private String titre;
+    private float duree;          // en minutes ou secondes ? (à documenter)
     private Album album;
-    private float duree;
+    private List<Artiste> artistes;
 
+    // ?-------------------------------*/
+    // ? -------- Constructeur --------*/
+    // ? ------------------------------*/
     public Musique(String titre, float duree, Album album, List<Artiste> artistes) {
         super();
-        setTitre(titre);
-        setDuree(duree);
-        setAlbum(album);
-        setArtistes(artistes);
-    }
-
-    /*------------------------------------------------------------------------*/
-    /*----------------------------Ensemble des set----------------------------*/
-    /*------------------------------------------------------------------------*/
-
-    public void setTitre(String titre) {
         this.titre = titre;
-    }
-
-    public void setDuree(float duree) {
         this.duree = duree;
-    }
-
-    public void setAlbum(Album album) {
         this.album = album;
+        // copie défensive pour éviter les effets de bord
+        this.artistes = (artistes != null) ? new ArrayList<>(artistes) : new ArrayList<>();
     }
 
-    public void setArtistes(List<Artiste> artistes) {
-        this.artistes = artistes;
-    }
-
-    /*------------------------------------------------------------------------*/
-    /*----------------------------Ensemble des get----------------------------*/
-    /*------------------------------------------------------------------------*/
-
+    // ?-------------------------------*/
+    // ? --------    GETTERS   --------*/
+    // ? ------------------------------*/
     public String getTitre() {
         return titre;
     }
@@ -59,26 +42,55 @@ public class Musique extends Identifier {
         return artistes;
     }
 
-    /*---------------------------------------*/
-    /*------------MéthodeBasique------------ */
-    /*---------------------------------------*/
+    // ?-------------------------------*/
+    // ? --------    SETTERS   --------*/
+    // ? ------------------------------*/
+    public void setTitre(String titre) {
+        this.titre = titre;
+    }
 
+    public void setDuree(float duree) {
+        // garde-fou simple; adapte si tu veux tolérer 0 ou négatif
+        if (duree > 0) this.duree = duree;
+    }
 
+    public void setAlbum(Album album) {
+        this.album = album;
+    }
+
+    public void setArtistes(List<Artiste> artistes) {
+        this.artistes = (artistes != null) ? new ArrayList<>(artistes) : new ArrayList<>();
+    }
+
+    // ?-------------------------------*/
+    // ? --------     UTILS    --------*/
+    // ? ------------------------------*/
     @Override
     public String toString() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy");
-        String formattedDate = (album != null && album.getDateSortie() != null) ? sdf.format(album.getDateSortie()) : "inconnu";
-
         StringBuilder sb = new StringBuilder();
-        sb.append("Musique [\n")
-                .append("  Id     : ").append(getId()).append("\n")
-                .append("  Titre  : ").append(getTitre()).append("\n")
-                .append("  Durée  : ").append(getDuree()).append("\n")
-                .append("  Album  : ").append(album != null ? album.getTitreAlbum() + " (" + formattedDate + ")" : "inconnu").append("\n")
-                .append("  Artistes : ");
+        sb.append("Musique [\n");
+        sb.append("  Id      : ").append(getId()).append("\n");
+        sb.append("  Titre   : ").append(titre != null ? titre : "inconnu").append("\n");
+        sb.append("  Durée   : ").append(duree).append("\n");
 
-        for (Artiste artiste : getArtistes()) {
-            sb.append(artiste.getNom()).append(", ");
+        // format d’année comme dans Album
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy");
+        String albumTxt = "inconnu";
+        if (album != null) {
+            String annee = (album.getDateSortie() != null) ? album.getDateSortie().format(fmt) : "inconnue";
+            albumTxt = album.getTitreAlbum() + " (" + annee + ")";
+        }
+        sb.append("  Album   : ").append(albumTxt).append("\n");
+
+        sb.append("  Artistes: ");
+        if (artistes != null && !artistes.isEmpty()) {
+            String noms = artistes.stream()
+                    .map(a -> a != null ? a.getNom() : "inconnu")
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+            sb.append(noms);
+        } else {
+            sb.append("aucun");
         }
         sb.append("\n]");
         return sb.toString();
@@ -86,14 +98,17 @@ public class Musique extends Identifier {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
+        if (this == o) return true;
+        if (!(o instanceof Musique)) return false;
         Musique musique = (Musique) o;
-        return Float.compare(musique.duree, duree) == 0 &&
-                titre.equals(musique.titre) &&
-                (album != null ? album.equals(musique.album) : musique.album == null) && // Comparaison des albums
-                artistes.equals(musique.artistes);
+        // pas de comparaison profonde de la liste (on peut changer selon besoin)
+        return Float.compare(musique.duree, duree) == 0
+                && Objects.equals(titre, musique.titre)
+                && Objects.equals(album, musique.album);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(titre, duree, album);
     }
 }

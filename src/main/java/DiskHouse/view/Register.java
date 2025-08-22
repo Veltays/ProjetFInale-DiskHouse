@@ -16,6 +16,9 @@ public class Register extends JFrame {
     private JPanel ChampConfirmPassword;
     private JLabel LogoLabel;
     private JLabel LabelTexteRegister;
+    private JButton sInscrireButton;
+    private JButton vousAvezDejaUnButton;
+
     public Register() {
         setTitle("Registre");
         setSize(500, 450);

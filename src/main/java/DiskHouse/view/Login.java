@@ -1,53 +1,99 @@
 package DiskHouse.view;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
+
+import DiskHouse.Controller.LoginController;
 
 public class Login extends JFrame {
 
+
+    // Champ UI
     private JPanel fond;
-    private JLabel logo;
-    private JLabel logintexte;
-    private JTextField textfieldusername;
-    private JPasswordField textfieldpassword;
+    private JLabel Logo;
+    private JLabel LoginTexte;
+
+
+    // champ TextField
+    private JTextField TextField_Username;
+    private JPasswordField TextField_Password;
+
+
+    // Champ Button
+    private JButton Button_NotRegister;
+    private JButton Button_Login;
+
+
+    // Champ Controller
+    private final LoginController controller;
+
+
 
     public Login() {
-        setTitle("Login");
-        setSize(500, 450);
-        setContentPane(fond); //  on définit bien Fond comme conteneur
+        super("cccccc");
+
+        // === Initialisation contrôleur ===
+        controller = new LoginController(this);
+
+        // === UI ===
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        //setSize(400, 250);
+        setLocationRelativeTo(null);
+
+        // === Création du JPanel en le placant dans le JFrame ===
+        setContentPane(fond);                 // le JPanel généré par le designer
+        pack();                               // respecte le layout de la Form
         setLocationRelativeTo(null);
 
 
-        showDialog();
+        controller.initController();
 
+
+        // showDialog(false); // si tu veux la montrer au démarrage sans bloquer
         setVisible(true);
 
+        // pour évité le focus
+        SwingUtilities.invokeLater(() -> fond.requestFocusInWindow());
 
     }
 
-    private void showDialog() {
-        // Créer et afficher le JDialog
-        JDialog dialog = new JDialog(Login.this, "Message", true);
-        dialog.setSize(250, 100);
-        dialog.setLocationRelativeTo(Login.this); // Centrer par rapport a fond
-        dialog.setLayout(new FlowLayout());
 
-        JLabel message = new JLabel("Fqbzhridjohzef");
-        JButton closeButton = new JButton("ehhe ");
 
-        // Action pour fermer le dialog
-        closeButton.addActionListener(ev -> dialog.dispose());
+    // fonction qui permettent au contoleur d'accéder aux composants de la vue
 
-        dialog.add(message);
-        dialog.add(closeButton);
-        dialog.setVisible(true);
-    }
+    public JButton getLoginButton() { return Button_Login; }
+    public JButton getNotRegisterButton() { return Button_NotRegister; }
+    public JTextField getTextfieldusername() { return TextField_Username; }
+    public JPasswordField getTextfieldpassword() { return TextField_Password; }
 
 
     public static void main(String[] args) {
-        new Login(); // au lieu de MainPage
+        SwingUtilities.invokeLater(Login::new); // lance sur l'EDT
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+//    private void showDialog(boolean modal) {
+//        JDialog dialog = new JDialog(this, "Message", modal);
+//        dialog.setSize(250, 100);
+//        dialog.setLocationRelativeTo(this);
+//        dialog.setLayout(new FlowLayout());
+//
+//        JLabel message = new JLabel("Fqbzhridjohzef");
+//        JButton closeButton = new JButton("Fermer");
+//        closeButton.addActionListener(ev -> dialog.dispose());
+//
+//        dialog.add(message);
+//        dialog.add(closeButton);
+//        dialog.setVisible(true);
+//    }
