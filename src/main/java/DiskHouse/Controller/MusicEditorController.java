@@ -16,9 +16,6 @@ public class MusicEditorController implements IController<MusicEditor> {
     private final MusicEditor view;
     private String selectedImagePath;
 
-    private static final String LOGO_ABSOLUTE_PATH =
-            "C:\\Users\\grany\\OneDrive\\HEPL\\BAC2\\Q2\\Programmation orientée objet en Java\\ProjetFInale-DiskHouse\\src\\main\\resources\\LogoMini.png";
-
     public MusicEditorController(MusicEditor view) {
         this.view = Objects.requireNonNull(view);
     }
@@ -70,17 +67,9 @@ public class MusicEditorController implements IController<MusicEditor> {
     }
 
     private void onOpenArtistEditor() {
-        //dialogue test
-
-
-        // Tout depuis le contrôleur (pas d’auto‑wiring dans la vue)
         SwingUtilities.invokeLater(() -> {
-            ArtisteEditor artistView = new ArtisteEditor();             // vue simple, non visible
-            artistView.setLogoFromAbsolutePath(LOGO_ABSOLUTE_PATH, 180, 48);
-
-            ArtisteEditorController artistController = new ArtisteEditorController(artistView);
-            artistController.initController();
-
+            // Ouvre simplement la boîte de dialogue Artiste (suppression des appels non existants)
+            ArtisteEditor artistView = new ArtisteEditor();
             artistView.pack();
             artistView.setLocationRelativeTo(view);
             artistView.setVisible(true);
@@ -90,15 +79,9 @@ public class MusicEditorController implements IController<MusicEditor> {
     }
 
     private void onOpenAlbumEditor() {
-
-
         SwingUtilities.invokeLater(() -> {
+            // Ouvre simplement la boîte de dialogue Album (suppression des appels non existants)
             AlbumEditor albumView = new AlbumEditor();
-            albumView.setLogoFromAbsolutePath(LOGO_ABSOLUTE_PATH, 180, 48);
-
-            AlbumEditorController albumController = new AlbumEditorController(albumView);
-            albumController.initController();
-
             albumView.pack();
             albumView.setLocationRelativeTo(view);
             albumView.setVisible(true);

@@ -2,7 +2,7 @@ package DiskHouse.Controller;
 
 import DiskHouse.model.entity.Album;
 import DiskHouse.model.entity.Artiste;
-import DiskHouse.view.ArtisteEditor;   // ← vue renommée
+import DiskHouse.view.ArtisteEditor;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,7 +20,6 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
 
     private final ArtisteEditor view;
 
-    // ⚠️ Le nom du constructeur doit correspondre EXACTEMENT au nom de la classe
     public ArtisteEditorController(ArtisteEditor view) {
         this.view = view;
     }
@@ -69,7 +68,6 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
 
     private String displayName(Artiste a) {
         if (a == null) return "";
-        // On préfère le pseudo s'il existe, sinon "Prénom Nom".
         try {
             String pseudo = safe(a.getPseudo());
             if (!pseudo.isBlank()) return pseudo;

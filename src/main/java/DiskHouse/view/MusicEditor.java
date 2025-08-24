@@ -1,6 +1,6 @@
 package DiskHouse.view;
 
-import DiskHouse.Controller.MusicEditorController;   // <-- ajout
+import DiskHouse.Controller.MusicEditorController;   // Contrôleur MVC
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 
@@ -19,13 +19,17 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 /**
- * MusicEditor - Vue compacte (GridLayoutManager + MVC)
+ * MusicEditor - Vue compacte en JDialog (modale) - GridLayoutManager + MVC
  * - Aperçu image centré (box fixe 170x170)
  * - Champs/combos 36px + placeholders
  * - Boutons "+" 36x36
  * - Chargement image fiable (ImageIO) depuis URL/fichier/ressource
+ *
+ * Ouverture typique depuis MainPage (JFrame) :
+ *   MusicEditor dlg = new MusicEditor(mainFrame);
+ *   dlg.setVisible(true);
  */
-public class MusicEditor extends JFrame {
+public class MusicEditor extends JDialog {
 
     private JPanel mainPanel;
     private JLabel logoLabel;
@@ -44,11 +48,12 @@ public class MusicEditor extends JFrame {
 
     private static final int PREVIEW_BOX = 170;
 
-    // --- contrôle du double-branchement du contrôleur
+    // éviter de rebranchement multiple du contrôleur
     private boolean controllerWired = false;
 
-    public MusicEditor() {
-        super("DiskHouse - Music Editor");
+    /** Constructeur modale, attaché à une fenêtre parente (recommandé). */
+    public MusicEditor(Window owner) {
+        super(owner, "DiskHouse - Music Editor", ModalityType.APPLICATION_MODAL);
         $$$setupUI$$$();                // crée TOUT (y compris les boutons)
         setContentPane(mainPanel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -57,13 +62,16 @@ public class MusicEditor extends JFrame {
 
         mainPanel.setPreferredSize(new Dimension(760, 520));
         pack();
-        setLocationRelativeTo(null);
+        setLocationRelativeTo(owner);
 
         // branche le contrôleur ici (comme dans PlaylistEditor)
         wireController();
 
         cancelButton.addActionListener(e -> dispose());
     }
+
+    /** Constructeur sans parent (fallback / démo). */
+    public MusicEditor() { this(null); }
 
     /** Instancie et initialise le contrôleur une seule fois. */
     private void wireController() {
@@ -378,6 +386,7 @@ public class MusicEditor extends JFrame {
 
     public JComponent $$$getRootComponent$$$() { return mainPanel; }
 
+    /** Petite démo indépendante : ouvre le dialog sans parent. */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new MusicEditor().setVisible(true));
     }
