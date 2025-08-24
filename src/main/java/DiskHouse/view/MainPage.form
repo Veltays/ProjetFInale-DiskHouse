@@ -126,18 +126,19 @@
                     </properties>
                     <border type="none"/>
                     <children>
-                      <component id="9c994" class="javax.swing.JButton" binding="Ajouter">
+                      <component id="9c994" class="javax.swing.JButton" binding="AjouterMusique">
                         <constraints>
                           <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="4" fill="0" indent="0" use-parent-layout="false"/>
                         </constraints>
                         <properties>
                           <actionCommand value="Button"/>
+                          <enabled value="true"/>
                           <icon value="BoutonA.png"/>
                           <label value=""/>
                           <text value=""/>
                         </properties>
                       </component>
-                      <component id="fc2a4" class="javax.swing.JButton" binding="Modifier">
+                      <component id="fc2a4" class="javax.swing.JButton" binding="ModifierMusique">
                         <constraints>
                           <grid row="0" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
                         </constraints>
@@ -147,7 +148,7 @@
                           <text value=""/>
                         </properties>
                       </component>
-                      <component id="7e53f" class="javax.swing.JButton" binding="Supprimer">
+                      <component id="7e53f" class="javax.swing.JButton" binding="SupprimerMusique">
                         <constraints>
                           <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                         </constraints>
@@ -246,7 +247,7 @@
             </properties>
             <border type="none"/>
             <children>
-              <component id="9b6fa" class="javax.swing.JButton" binding="Ajouter1">
+              <component id="9b6fa" class="javax.swing.JButton" binding="AjouterPlaylist">
                 <constraints>
                   <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
@@ -257,7 +258,7 @@
                   <text value=""/>
                 </properties>
               </component>
-              <component id="9ca74" class="javax.swing.JButton" binding="Supprimer1">
+              <component id="9ca74" class="javax.swing.JButton" binding="SupprimerPlaylist">
                 <constraints>
                   <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
@@ -268,7 +269,7 @@
                   <text value=""/>
                 </properties>
               </component>
-              <component id="92f72" class="javax.swing.JButton" binding="Modifier1">
+              <component id="92f72" class="javax.swing.JButton" binding="ModifierPlaylist">
                 <constraints>
                   <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="1" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
@@ -314,7 +315,7 @@
             </properties>
             <border type="none"/>
             <children>
-              <component id="2c9a3" class="javax.swing.JLabel" binding="PhotoProrfil">
+              <component id="2c9a3" class="javax.swing.JLabel" binding="PhotoPlaylist">
                 <constraints>
                   <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>

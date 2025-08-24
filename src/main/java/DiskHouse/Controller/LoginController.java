@@ -1,105 +1,75 @@
 package DiskHouse.Controller;
 
+import DiskHouse.model.authentification.Authenticator;
+import DiskHouse.model.service.PropertiesAuthenticator;
 import DiskHouse.view.Login;
-import DiskHouse.view.Register;
 import DiskHouse.view.MainPage;
 
 import javax.swing.*;
-import java.awt.Color;
+import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.util.Objects;
 
-public class LoginController {
+public class LoginController implements IController<Login> {
     private final Login view;
+    private final Authenticator authenticator;
 
     public LoginController(Login view) {
-        this.view = view;
+        this.view = Objects.requireNonNull(view);
+        this.authenticator = new PropertiesAuthenticator();
     }
 
+    @Override
+    public Login getView() { return view; }
 
-
-
-
-    // ?
-    // * Initialise le contrôleur en ajoutant des écouteurs d'événements aux composants de la vue.
-    // * Elle récupére les composants de la vue et ajoute des écouteurs d'événements pour gérer les actions de l'utilisateur.
-    // ?
+    @Override
     public void initController() {
-        // Bouton Login
-        view.getLoginButton().addActionListener(e -> handleLogin());
+        view.getLoginButton().addActionListener(e -> onLogin());
+        view.getNotRegisterButton().addActionListener(e -> onOpenRegister());
 
-        // Bouton "Pas de compte ?"
-        view.getNotRegisterButton().addActionListener(e -> openRegister());
-
-        JTextField username = view.getTextfieldusername();
-        addPlaceholder(username, "Nom d'utilisateur");
-
-        // Placeholder pour Password
-        JPasswordField password = view.getTextfieldpassword();
-        addPlaceholder(password, "Mot de passe");
-
+        addPlaceholder(view.getTextfieldusername(), "Nom d'utilisateur");
+        addPlaceholder(view.getTextfieldpassword(), "Mot de passe");
     }
 
+    /* ================= Actions ================= */
 
-    // ?
-    // * Gère la connexion de l'utilisateur en vérifiant les informations d'identification.
-    // *
-    // ?
-
-
-    private void handleLogin() {
-        String user = view.getTextfieldusername().getText();
+    private void onLogin() {
+        String user = view.getTextfieldusername().getText().trim();
         String pass = new String(view.getTextfieldpassword().getPassword());
 
-        // Ici tu pourrais vérifier dans ta DB
-        if ("admin".equals(user) && "1234".equals(pass)) {
-            JOptionPane.showMessageDialog(view, "Connexion réussie !");
-            openMainPage(); // Ouvre la fenêtre principale
+        if (authenticator.authenticate(user, pass)) {
+            showInfo(view, "Connexion réussie !", "Succès");
+            onOpenMainPage();
         } else {
-            JOptionPane.showMessageDialog(view, "Utilisateur/Mot de passe incorrect !");
+            showError(view, "Utilisateur/Mot de passe incorrect !", "Erreur");
         }
     }
 
-
-    // ?
-    // * Ouvre la fenêtre d'inscription.
-    // * Cette méthode est appelée lorsque l'utilisateur clique sur le bouton "Pas de compte ?
-    // ?
-
-    private void openRegister() {
-        new Register(); // Ouvre la fenêtre d’inscription
-        view.dispose(); // Ferme la fenêtre de login
+    private void onOpenRegister() {
+        new DiskHouse.view.Register();
+        view.dispose();
     }
 
-
-    private void openMainPage() {
+    private void onOpenMainPage() {
         new MainPage();
-        view.dispose(); // Ferme la fenêtre de login
+        view.dispose();
     }
 
+    /* ================= Helpers ================= */
 
-
-
-
-    // ?
-    // * Ajoute un placeholder à un champ de texte.
-    // * Le placeholder est un texte d'indication qui disparaît lorsque l'utilisateur clique sur le champ.
-    // ?
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
 
         field.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusGained(FocusEvent e) {
+            @Override public void focusGained(FocusEvent e) {
                 if (field.getText().equals(placeholder)) {
                     field.setText("");
                     field.setForeground(Color.BLACK);
                 }
             }
-
-            @Override
-            public void focusLost(FocusEvent e) {
+            @Override public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
                     field.setText(placeholder);
                     field.setForeground(Color.GRAY);

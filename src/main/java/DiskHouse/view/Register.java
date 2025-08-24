@@ -1,17 +1,22 @@
 package DiskHouse.view;
-import javax.swing.*;
 
+import DiskHouse.Controller.RegisterController;
+
+import javax.swing.*;
 
 public class Register extends JFrame {
 
-
+    // === Composants générés par l'UI Designer (ne pas renommer côté .form) ===
     private JPanel Fond;
     private JPanel Logo;
     private JPanel TexteRegister;
+
     private JTextField TextFieldUsername;
     private JPanel ChampUsername;
-    private JTextField passwordField;
-    private JTextField passwordFieldConfirmPassword;
+
+    private JPasswordField passwordField;
+    private JPasswordField passwordFieldConfirmPassword;
+
     private JPanel ChampPassword;
     private JPanel ChampConfirmPassword;
     private JLabel LogoLabel;
@@ -19,16 +24,32 @@ public class Register extends JFrame {
     private JButton sInscrireButton;
     private JButton vousAvezDejaUnButton;
 
+    // === Wiring MVC dans le constructeur (pas dans main) ===
     public Register() {
         setTitle("Registre");
-        setSize(500, 450);
-        setContentPane(Fond); //  on définit bien Fond comme conteneur
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setContentPane(Fond);    // respecte le GridLayoutManager défini dans .form
+        pack();
         setLocationRelativeTo(null);
+
+        // -> Bind du contrôleur ICI
+        new RegisterController(this).initController();
+
         setVisible(true);
+        // optionnel : éviter le focus auto sur un champ
+        SwingUtilities.invokeLater(() -> Fond.requestFocusInWindow());
     }
 
+    // === Getters pour le contrôleur ===
+    public JButton getSInscrireButton() { return sInscrireButton; }
+    public JButton getVousAvezDejaUnButton() { return vousAvezDejaUnButton; }
+    public JTextField getTextFieldUsername() { return TextFieldUsername; }
+    public JPasswordField getPasswordField() { return passwordField; }
+    public JPasswordField getPasswordFieldConfirmPassword() { return passwordFieldConfirmPassword; }
+    public JPanel getRootPanel() { return Fond; }
+
+    // Si tu veux tester en standalone : laisse vide, le wiring est dans le ctor
     public static void main(String[] args) {
-        new Register(); // au lieu de MainPage
+        SwingUtilities.invokeLater(Register::new);
     }
 }

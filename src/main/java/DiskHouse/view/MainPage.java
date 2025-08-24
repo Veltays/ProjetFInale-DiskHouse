@@ -1,9 +1,12 @@
 package DiskHouse.view;
 
+import DiskHouse.Controller.MainPageController;
+
 import javax.swing.*;
 
-
 public class MainPage extends JFrame {
+
+    // --- Composants générés par l'UI Designer (ne pas renommer sans MAJ du .form) ---
     private JPanel MainWindow;
     private JTable tablePlaylist;
     private JTable TablePlaylist;
@@ -13,46 +16,43 @@ public class MainPage extends JFrame {
     private JPanel ProfilPlaylist;
     private JPanel PlaylistNamePanel;
     private JPanel ButtonNamePanel;
-    private JButton Ajouter;
-    private JButton Supprimer;
-    private JButton Modifier;
-    private JLabel PhotoProrfil;
-    private JButton Ajouter1;
-    private JButton Supprimer1;
-    private JButton Modifier1;
+    private JButton AjouterMusique;
+    private JButton SupprimerMusique;
+    private JButton ModifierMusique;
+    private JLabel PhotoPlaylist;
+    private JButton AjouterPlaylist;
+    private JButton SupprimerPlaylist;
+    private JButton ModifierPlaylist;
     private JScrollBar scrollBar1;
     private JScrollBar scrollBar2;
 
-
     public MainPage() {
         setTitle("DiskHouse");
-        setContentPane(MainWindow); //  on définit bien Fond comme conteneur
+        setContentPane(MainWindow);        // on garde le GridLayoutManager de l'UI Designer
         setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
+        initController();                  // branche le contrôleur
         setVisible(true);
-
-
-        styliserBouton(Ajouter);
-        styliserBouton(Supprimer);
-        styliserBouton(Modifier);
-
-        styliserBouton(Ajouter1);
-        styliserBouton(Supprimer1);
-        styliserBouton(Modifier1);
-
-    }
-    private void styliserBouton(JButton bouton) {
-        bouton.setContentAreaFilled(false);   // Enlève le fond
-        bouton.setBorderPainted(false);       // Enlève le contour
-        bouton.setFocusPainted(false);        // Enlève le focus (le carré)
-        bouton.setOpaque(false);              // Rend transparent
     }
 
+    private void initController() {
+        new MainPageController(this).initController();
+    }
 
+    // --- Getters utilisés par le contrôleur (simples et suffisants) ---
+    public JButton getAjouterMusique()    { return AjouterMusique; }
+    public JButton getSupprimerMusique()  { return SupprimerMusique; }
+    public JButton getModifierMusique()   { return ModifierMusique; }
+    public JButton getAjouterPlaylist()   { return AjouterPlaylist; }
+    public JButton getSupprimerPlaylist() { return SupprimerPlaylist; }
+    public JButton getModifierPlaylist()  { return ModifierPlaylist; }
+    public JTable  getTablePlaylist()     { return (tablePlaylist != null) ? tablePlaylist : TablePlaylist; }
+    public JLabel  getPhotoPlaylist()     { return PhotoPlaylist; }
 
+    // --- Main de test optionnel ---
     public static void main(String[] args) {
-        new MainPage();
+        SwingUtilities.invokeLater(MainPage::new);
     }
 }

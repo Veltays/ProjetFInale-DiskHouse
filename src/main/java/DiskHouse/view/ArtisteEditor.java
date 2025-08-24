@@ -1,5 +1,6 @@
 package DiskHouse.view;
 
+import DiskHouse.Controller.ArtisteEditorController;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 
@@ -10,12 +11,15 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 /**
- * Vue "Album" (SANS écouteurs)
- * - Pochette (cliquable par le contrôleur)
- * - Titre d'album (modifiable via bouton "éditer" par le contrôleur)
- * - Liste de musiques (JList) + boutons Ajouter/Supprimer
+ * Vue "Artist" (SANS écouteurs)
+ * - Portrait (cliquable par le contrôleur)
+ * - Nom d'artiste (JTextField éditable)
+ * - JList des albums + boutons Ajouter/Supprimer
+ *
+ * Respect GridLayoutManager (IntelliJ) + MVC
+ * Auto‑liaison contrôleur via wireController()
  */
-public class AddAlbum extends JFrame {
+public class ArtistEditor extends JFrame {
 
     // Root
     private JPanel mainPanel;
@@ -24,102 +28,101 @@ public class AddAlbum extends JFrame {
     private JLabel logoLabel;
     private JLabel appTitleLabel;
 
-    // Album header row
-    private JLabel coverLabel;           // pochette
-    private JLabel albumTitleLabel;      // "NomAlbum"
-    private JButton editAlbumButton;     // ✎ (le contrôleur gère le click)
+    // Ligne d’entête artiste
+    private JLabel portraitLabel;         // portrait (cliquable par le contrôleur)
+    private JTextField artistNameField;   // nom artiste (éditable)
+    private JButton editArtistButton;     // ✎ focus + selectAll
 
-    // Zone liste des musiques
-    private JLabel musiquesLabel;        // "Musique"
-    private JList<String> songsList;
-    private JScrollPane songsScroll;
+    // Zone liste des albums
+    private JLabel albumsLabel;           // "Albums"
+    private JList<String> albumsList;
+    private JScrollPane albumsScroll;
 
     // Actions
-    private JButton addSongButton;       // +
-    private JButton removeSongButton;    // 🗑
+    private JButton addAlbumButton;       // +
+    private JButton removeAlbumButton;    // 🗑
 
     // Constantes UI
-    private static final Dimension COVER_SIZE = new Dimension(140, 140);
+    private static final Dimension PORTRAIT_SIZE = new Dimension(140, 140);
     private static final Color BLUE = new Color(0x0E2A62);
 
-    public AddAlbum() {
-        super("DiskHouse - Album");
+    public ArtistEditor() {
+        super("DiskHouse - Artiste");
         $$$setupUI$$$();
 
         setContentPane(mainPanel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        // Style global
+        // Style léger (optionnel)
         mainPanel.setBackground(Color.WHITE);
         mainPanel.setBorder(new EmptyBorder(24, 24, 24, 24));
 
-        // En-tête
         appTitleLabel.setText("DiskHouse");
         appTitleLabel.setFont(appTitleLabel.getFont().deriveFont(Font.BOLD, 18f));
         appTitleLabel.setForeground(new Color(0x3B5C8E));
 
-        // Pochette (pur visuel)
-        coverLabel.setPreferredSize(COVER_SIZE);
-        coverLabel.setMinimumSize(COVER_SIZE);
-        coverLabel.setOpaque(true);
-        coverLabel.setBackground(new Color(0xB3C4E1));
-        coverLabel.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
-        coverLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        coverLabel.setVerticalAlignment(SwingConstants.CENTER);
+        // Portrait
+        portraitLabel.setPreferredSize(PORTRAIT_SIZE);
+        portraitLabel.setMinimumSize(PORTRAIT_SIZE);
+        portraitLabel.setOpaque(true);
+        portraitLabel.setBackground(new Color(0xB3C4E1));
+        portraitLabel.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
+        portraitLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        portraitLabel.setVerticalAlignment(SwingConstants.CENTER);
 
-        // Titre Album (visuel)
-        albumTitleLabel.setText("NomAlbum");
-        albumTitleLabel.setForeground(BLUE);
-        albumTitleLabel.setFont(albumTitleLabel.getFont().deriveFont(Font.BOLD, 42f));
+        // Nom artiste (EDITABLE)
+        artistNameField.setText("NomArtiste");
+        artistNameField.setBorder(null);
+        artistNameField.setFont(artistNameField.getFont().deriveFont(Font.BOLD, 42f));
+        artistNameField.setForeground(BLUE);
+        artistNameField.setOpaque(false);
 
-        // Bouton éditer (visuel)
-        editAlbumButton.setText("✎");
-        editAlbumButton.setFocusPainted(false);
-        editAlbumButton.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(BLUE, 2, true),
-                new EmptyBorder(6, 10, 6, 10)
-        ));
-        editAlbumButton.setForeground(BLUE);
-        editAlbumButton.setBackground(Color.WHITE);
+        // Bouton éditer
+        styliserAction(editArtistButton, "✎");
 
-        // Libellé "Musique"
-        musiquesLabel.setText("Musique");
-        musiquesLabel.setFont(musiquesLabel.getFont().deriveFont(Font.BOLD, 14f));
-        musiquesLabel.setForeground(Color.DARK_GRAY);
+        // Libellé "Albums"
+        albumsLabel.setText("Albums");
+        albumsLabel.setFont(albumsLabel.getFont().deriveFont(Font.BOLD, 14f));
+        albumsLabel.setForeground(Color.DARK_GRAY);
 
-        // Liste musiques
-        songsList.setVisibleRowCount(10);
-        songsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        songsList.setFixedCellHeight(28);
-        songsList.setBorder(new EmptyBorder(6, 12, 6, 12));
-        songsScroll.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
+        // Liste albums
+        albumsList.setVisibleRowCount(10);
+        albumsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        albumsList.setFixedCellHeight(28);
+        albumsList.setBorder(new EmptyBorder(6, 12, 6, 12));
+        albumsScroll.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
 
         // Boutons actions
-        addSongButton.setText("＋");
-        addSongButton.setFocusPainted(false);
-        addSongButton.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(BLUE, 2, true),
-                new EmptyBorder(6, 12, 6, 12)
-        ));
-        addSongButton.setForeground(BLUE);
-        addSongButton.setBackground(Color.WHITE);
+        styliserAction(addAlbumButton, "＋");
+        styliserAction(removeAlbumButton, "🗑");
 
-        removeSongButton.setText("🗑");
-        removeSongButton.setFocusPainted(false);
-        removeSongButton.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(BLUE, 2, true),
-                new EmptyBorder(6, 12, 6, 12)
-        ));
-        removeSongButton.setForeground(BLUE);
-        removeSongButton.setBackground(Color.WHITE);
+        // Auto‑wiring contrôleur
+        wireController();
 
         pack();
         setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    /** Instancie le contrôleur et branche ses listeners. */
+    private void wireController() {
+        new ArtisteEditorController(this).initController();
     }
 
     /* ===================== Helpers visuels ===================== */
 
-    /** Définir le logo appli depuis un chemin absolu. */
+    private void styliserAction(JButton b, String text) {
+        b.setText(text);
+        b.setFocusPainted(false);
+        b.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(BLUE, 2, true),
+                new EmptyBorder(6, 12, 6, 12)
+        ));
+        b.setForeground(BLUE);
+        b.setBackground(Color.WHITE);
+    }
+
+    /** Définit le logo appli depuis un chemin absolu et le redimensionne. */
     public void setLogoFromAbsolutePath(String absolutePath, int targetW, int targetH) {
         try {
             ImageIcon icon = new ImageIcon(absolutePath);
@@ -135,14 +138,14 @@ public class AddAlbum extends JFrame {
         }
     }
 
-    /** Définir la pochette centrée dans un carré COVER_SIZE. */
-    public void setCoverImage(Image source) {
+    /** Définit le portrait centré dans un carré PORTRAIT_SIZE. */
+    public void setPortraitImage(Image source) {
         if (source == null) {
-            coverLabel.setIcon(null);
-            coverLabel.setText("");
+            portraitLabel.setIcon(null);
+            portraitLabel.setText("");
             return;
         }
-        int box = COVER_SIZE.width;
+        int box = PORTRAIT_SIZE.width;
         int w = source.getWidth(null), h = source.getHeight(null);
         if (w <= 0 || h <= 0) return;
 
@@ -157,24 +160,23 @@ public class AddAlbum extends JFrame {
         g.drawImage(scaled, x, y, null);
         g.dispose();
 
-        coverLabel.setText(null);
-        coverLabel.setIcon(new ImageIcon(canvas));
+        portraitLabel.setText(null);
+        portraitLabel.setIcon(new ImageIcon(canvas));
     }
 
-    /** Définir le titre affiché. */
-    public void setAlbumTitle(String title) {
-        albumTitleLabel.setText(title != null ? title : "");
+    /** Raccourci pratique si le contrôleur veut forcer un nom. */
+    public void setArtistName(String name) {
+        artistNameField.setText(name != null ? name : "");
     }
 
     /* ===================== Getters MVC ===================== */
-    public JLabel getCoverLabel() { return coverLabel; }
-    public JLabel getAlbumTitleLabel() { return albumTitleLabel; }
-    public JButton getEditAlbumButton() { return editAlbumButton; }
-
-    public JList<String> getSongsList() { return songsList; }
-    public JScrollPane getSongsScroll() { return songsScroll; }
-    public JButton getAddSongButton() { return addSongButton; }
-    public JButton getRemoveSongButton() { return removeSongButton; }
+    public JLabel getPortraitLabel() { return portraitLabel; }
+    public JTextField getArtistNameField() { return artistNameField; }
+    public JButton getEditArtistButton() { return editArtistButton; }
+    public JList<String> getAlbumsList() { return albumsList; }
+    public JScrollPane getAlbumsScroll() { return albumsScroll; }
+    public JButton getAddAlbumButtonView() { return addAlbumButton; }     // nom distinct pour éviter collision avec contrôleur
+    public JButton getRemoveAlbumButtonView() { return removeAlbumButton; }
 
     /* ===================== Layout (GridLayoutManager) ===================== */
     private void $$$setupUI$$$() {
@@ -211,25 +213,25 @@ public class AddAlbum extends JFrame {
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        // Ligne Album (pochette + titre + bouton edit)
+        // Ligne Artiste (portrait + nom + bouton edit)
         JPanel row = new JPanel(new GridLayoutManager(1, 3, new Insets(0,0,0,0), 12, 0));
         row.setOpaque(false);
         mainPanel.add(row, new GridConstraints(2, 1, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                 GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        coverLabel = new JLabel();
-        row.add(coverLabel, new GridConstraints(0, 0, 1, 1,
+        portraitLabel = new JLabel();
+        row.add(portraitLabel, new GridConstraints(0, 0, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, COVER_SIZE, COVER_SIZE, 0, false));
+                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, PORTRAIT_SIZE, PORTRAIT_SIZE, 0, false));
 
-        albumTitleLabel = new JLabel("NomAlbum");
-        row.add(albumTitleLabel, new GridConstraints(0, 1, 1, 1,
+        artistNameField = new JTextField("NomArtiste");
+        row.add(artistNameField, new GridConstraints(0, 1, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                 GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        editAlbumButton = new JButton();
-        row.add(editAlbumButton, new GridConstraints(0, 2, 1, 1,
+        editArtistButton = new JButton();
+        row.add(editArtistButton, new GridConstraints(0, 2, 1, 1,
                 GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
@@ -238,16 +240,16 @@ public class AddAlbum extends JFrame {
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        // Label "Musique"
-        musiquesLabel = new JLabel("Musique");
-        mainPanel.add(musiquesLabel, new GridConstraints(4, 1, 1, 1,
+        // Label "Albums"
+        albumsLabel = new JLabel("Albums");
+        mainPanel.add(albumsLabel, new GridConstraints(4, 1, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
         // Liste
-        songsList = new JList<>(new DefaultListModel<>());
-        songsScroll = new JScrollPane(songsList, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        mainPanel.add(songsScroll, new GridConstraints(5, 1, 5, 1,
+        albumsList = new JList<>(new DefaultListModel<>());
+        albumsScroll = new JScrollPane(albumsList, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        mainPanel.add(albumsScroll, new GridConstraints(5, 1, 5, 1,
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_WANT_GROW,
                 null, new Dimension(560, 340), null, 0, false));
@@ -256,18 +258,18 @@ public class AddAlbum extends JFrame {
         JPanel actions = new JPanel(new GridLayoutManager(1, 5, new Insets(0,0,0,0), 12, 0));
         actions.setOpaque(false);
 
-        addSongButton = new JButton();
-        removeSongButton = new JButton();
+        addAlbumButton = new JButton();
+        removeAlbumButton = new JButton();
 
         actions.add(new JPanel(){ { setOpaque(false);} }, new GridConstraints(
                 0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
 
-        actions.add(addSongButton, new GridConstraints(
+        actions.add(addAlbumButton, new GridConstraints(
                 0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        actions.add(removeSongButton, new GridConstraints(
+        actions.add(removeAlbumButton, new GridConstraints(
                 0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
@@ -295,21 +297,6 @@ public class AddAlbum extends JFrame {
     public JComponent $$$getRootComponent$$$() { return mainPanel; }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            AddAlbum view = new AddAlbum();
-            view.setLogoFromAbsolutePath(
-                    "C:\\Users\\grany\\OneDrive\\HEPL\\BAC2\\Q2\\Programmation orientée objet en Java\\ProjetFInale-DiskHouse\\src\\main\\resources\\LogoMini.png",
-                    180, 48
-            );
-
-            // Contrôleur
-            DiskHouse.Controller.AlbumController controller = new DiskHouse.Controller.AlbumController(view);
-            controller.initController();
-
-            // éviter le focus auto sur la liste
-            SwingUtilities.invokeLater(() -> view.getRootPane().requestFocusInWindow());
-
-            view.setVisible(true);
-        });
+        SwingUtilities.invokeLater(ArtistEditor::new);
     }
 }
