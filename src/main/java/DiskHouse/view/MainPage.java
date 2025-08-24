@@ -21,14 +21,14 @@ public class MainPage extends JFrame {
     private JButton AjouterPlaylist;
     private JButton SupprimerPlaylist;
     private JButton ModifierPlaylist;
-    private JScrollBar scrollBar1;
-    private JScrollBar scrollBar2;
+    private JComboBox<String> dateTypeComboBox;
 
     // === Menu ===
     private JMenuItem logoutMenuItem;
     private JMenuItem exportCsvMenuItem;
     private JMenuItem exportTxtMenuItem;
     private JMenuItem exportXmlMenuItem;
+    private JMenuItem exportJsonMenuItem;
     private JMenuItem colorBlackMenuItem;
     private JMenuItem colorWhiteMenuItem;
 
@@ -39,12 +39,53 @@ public class MainPage extends JFrame {
     private JMenuItem dateMediumMenuItem;
     private JMenuItem dateShortMenuItem;
 
+    // === Menu Import ===
+    private JMenuItem importCsvMenuItem;
+    private JMenuItem importTxtMenuItem;
+    private JMenuItem importXmlMenuItem;
+    private JMenuItem importJsonMenuItem;
+
     public MainPage() {
         setTitle("DiskHouse");
         setContentPane(MainWindow);
         setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+
+        // Rendre les JTable scrollables et la table playlist moins haute pour laisser la place aux boutons
+        JScrollPane scrollPlaylist = new JScrollPane(tablePlaylist);
+        scrollPlaylist.setPreferredSize(new Dimension(200, 300)); // Largeur 200px, hauteur 300px max
+        scrollPlaylist.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
+        ListePlaylist.setLayout(new BoxLayout(ListePlaylist, BoxLayout.Y_AXIS));
+        ListePlaylist.removeAll();
+        ListePlaylist.add(scrollPlaylist);
+        ListePlaylist.add(ButtonNamePanel);
+
+        JScrollPane scrollMusic = new JScrollPane(TableMusicInPlaylistSelected);
+        scrollMusic.setPreferredSize(new Dimension(1000, 800)); // Hauteur augmentée à 800px
+        scrollMusic.setMaximumSize(new Dimension(Integer.MAX_VALUE, 800));
+        Musique.setLayout(new BoxLayout(Musique, BoxLayout.Y_AXIS));
+
+        // Panel header : titre à gauche, photo à droite
+        JPanel panelHeaderMusique = new JPanel(new BorderLayout());
+        if (PlaylistNamePanel != null) panelHeaderMusique.add(PlaylistNamePanel, BorderLayout.CENTER);
+        if (PhotoPlaylist != null) panelHeaderMusique.add(PhotoPlaylist, BorderLayout.EAST);
+
+        // Panel horizontal pour les boutons
+        JPanel panelBoutons = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        if (AjouterMusique != null) panelBoutons.add(AjouterMusique);
+        if (ModifierMusique != null) panelBoutons.add(ModifierMusique);
+        if (SupprimerMusique != null) panelBoutons.add(SupprimerMusique);
+
+        // Panel vertical pour header + boutons
+        JPanel panelTopMusique = new JPanel();
+        panelTopMusique.setLayout(new BoxLayout(panelTopMusique, BoxLayout.Y_AXIS));
+        if (panelHeaderMusique != null) panelTopMusique.add(panelHeaderMusique);
+        panelTopMusique.add(panelBoutons);
+
+        if (panelTopMusique != null) Musique.add(panelTopMusique);
+        if (scrollMusic != null) Musique.add(scrollMusic);
+        if (dateTypeComboBox != null) Musique.add(dateTypeComboBox);
 
         styliserBouton(AjouterMusique);
         styliserBouton(SupprimerMusique);
@@ -69,9 +110,11 @@ public class MainPage extends JFrame {
         exportCsvMenuItem = new JMenuItem("CSV");
         exportTxtMenuItem = new JMenuItem("TXT");
         exportXmlMenuItem = new JMenuItem("XML");
+        exportJsonMenuItem = new JMenuItem("JSON");
         exportMenu.add(exportCsvMenuItem);
         exportMenu.add(exportTxtMenuItem);
         exportMenu.add(exportXmlMenuItem);
+        exportMenu.add(exportJsonMenuItem);
 
         // Menu Couleur
         JMenu colorMenu = new JMenu("Couleur");
@@ -95,6 +138,18 @@ public class MainPage extends JFrame {
         dateMenu.add(dateLongMenuItem);
         dateMenu.add(dateMediumMenuItem);
         dateMenu.add(dateShortMenuItem);
+
+        // Menu Import
+        JMenu importMenu = new JMenu("Import");
+        menuBar.add(importMenu);
+        importCsvMenuItem = new JMenuItem("CSV");
+        importTxtMenuItem = new JMenuItem("TXT");
+        importXmlMenuItem = new JMenuItem("XML");
+        importJsonMenuItem = new JMenuItem("JSON");
+        importMenu.add(importCsvMenuItem);
+        importMenu.add(importTxtMenuItem);
+        importMenu.add(importXmlMenuItem);
+        importMenu.add(importJsonMenuItem);
 
         // ❌ Pas de logique métier ici → le contrôleur branchera les listeners
     }
@@ -142,4 +197,15 @@ public class MainPage extends JFrame {
     public JMenuItem getDateLongMenuItem() { return dateLongMenuItem; }
     public JMenuItem getDateMediumMenuItem() { return dateMediumMenuItem; }
     public JMenuItem getDateShortMenuItem() { return dateShortMenuItem; }
+    public JMenuItem getExportJsonMenuItem() { return exportJsonMenuItem; }
+
+    // Getters Menu Import
+    public JMenuItem getImportCsvMenuItem() { return importCsvMenuItem; }
+    public JMenuItem getImportTxtMenuItem() { return importTxtMenuItem; }
+    public JMenuItem getImportXmlMenuItem() { return importXmlMenuItem; }
+    public JMenuItem getImportJsonMenuItem() { return importJsonMenuItem; }
+
+    public JComboBox<String> getDateTypeComboBox() {
+        return dateTypeComboBox;
+    }
 }

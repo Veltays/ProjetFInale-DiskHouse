@@ -5,34 +5,27 @@ import java.util.List;
 import java.util.Objects;
 
 public class Artiste extends Identifier {
-    private String nom;
-    private String prenom;
     private String pseudo;
     private List<Album> albums;
+    private String imageURL;
 
     // ?-------------------------------*/
     // ? -------- Constructeur --------*/
     // ? ------------------------------*/
-    public Artiste(String nom, String prenom, String pseudo, List<Album> albums) {
-        super(); // appel au parent Identifier pour générer l’ID
-        this.nom = nom;
-        this.prenom = prenom;
+    public Artiste(String pseudo, List<Album> albums, String imageURL) {
+        super();
         this.pseudo = pseudo;
-        // copie défensive
         this.albums = (albums != null) ? new ArrayList<>(albums) : new ArrayList<>();
+        this.imageURL = imageURL;
+    }
+
+    public Artiste(String pseudo, List<Album> albums) {
+        this(pseudo, albums, null);
     }
 
     // ?-------------------------------*/
     // ? --------    GETTERS   --------*/
     // ? ------------------------------*/
-    public String getNom() {
-        return nom;
-    }
-
-    public String getPrenom() {
-        return prenom;
-    }
-
     public String getPseudo() {
         return pseudo;
     }
@@ -41,23 +34,23 @@ public class Artiste extends Identifier {
         return albums;
     }
 
+    public String getImageURL() {
+        return imageURL;
+    }
+
     // ?-------------------------------*/
     // ? --------    SETTERS   --------*/
     // ? ------------------------------*/
-    public void setNom(String nom) {
-        this.nom = nom;
-    }
-
-    public void setPrenom(String prenom) {
-        this.prenom = prenom;
-    }
-
     public void setPseudo(String pseudo) {
         this.pseudo = pseudo;
     }
 
     public void setAlbums(List<Album> albums) {
         this.albums = (albums != null) ? new ArrayList<>(albums) : new ArrayList<>();
+    }
+
+    public void setImageURL(String imageURL) {
+        this.imageURL = imageURL;
     }
 
     // ?-------------------------------*/
@@ -68,9 +61,8 @@ public class Artiste extends Identifier {
         StringBuilder sb = new StringBuilder();
         sb.append("Artiste [\n");
         sb.append("  Id      : ").append(getId()).append("\n");
-        sb.append("  Nom     : ").append(getNom()).append("\n");
-        sb.append("  Prénom  : ").append(getPrenom()).append("\n");
         sb.append("  Pseudo  : ").append(getPseudo()).append("\n");
+        sb.append("  Image   : ").append(getImageURL()).append("\n");
         sb.append("  Albums  : \n");
         if (albums != null && !albums.isEmpty()) {
             for (Album album : albums) {
@@ -89,15 +81,11 @@ public class Artiste extends Identifier {
         if (this == o) return true;
         if (!(o instanceof Artiste)) return false;
         Artiste artiste = (Artiste) o;
-        return Objects.equals(nom, artiste.nom)
-                && Objects.equals(prenom, artiste.prenom)
-                && Objects.equals(pseudo, artiste.pseudo);
-        // ⚠ volontairement on ne compare pas la liste d'albums
-        // pour éviter des comparaisons profondes/cycles
+        return Objects.equals(pseudo, artiste.pseudo);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(nom, prenom, pseudo);
+        return Objects.hash(pseudo);
     }
 }

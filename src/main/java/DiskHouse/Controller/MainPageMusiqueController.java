@@ -22,14 +22,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.net.URL;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class MainPageMusiqueController {
 
     private final MainPageController root;
+    private String dateType = "Date de sortie";
 
     // ===== DAO =====
     private final PlaylistFileDAO playlistDAO = new PlaylistFileDAO("data/playlists.dat");
@@ -41,12 +42,29 @@ public class MainPageMusiqueController {
 
     public MainPageMusiqueController(MainPageController root) {
         this.root = root;
+        // Ajout du listener sur le JComboBox de la vue
+        JComboBox<String> combo = root.getView().getDateTypeComboBox();
+        if (combo != null) {
+            combo.addActionListener(e -> {
+                dateType = (String) combo.getSelectedItem();
+                JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
+                JTable playlistTable = root.getView().getTablePlaylist();
+                Playlist playlist = getSelectedPlaylist(playlistTable);
+                loadMusicsForPlaylist(musicTable, playlist);
+            });
+        }
+    }
+    public void refreshMusicTable() {
+        JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
+        JTable playlistTable = root.getView().getTablePlaylist();
+        Playlist playlist = getSelectedPlaylist(playlistTable);
+        loadMusicsForPlaylist(musicTable, playlist);
     }
 
     /* ===================== INIT TABLE ===================== */
 
     public void initMusicTable(JTable table) {
-        String[] columns = {"ID", "CoverURL", "Titre / Artistes / Album", "Durée"};
+        String[] columns = {"ID", "CoverURL", "Titre / Artistes / Album", "Durée", "Date"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
             @Override public Class<?> getColumnClass(int columnIndex) { return String.class; }
@@ -69,12 +87,17 @@ public class MainPageMusiqueController {
         hideColumn(cm.getColumn(0)); // ID
         hideColumn(cm.getColumn(1)); // CoverURL
 
-        cm.getColumn(2).setPreferredWidth(600);
+        cm.getColumn(2).setPreferredWidth(350); // Largeur réduite pour la colonne Titre/Artistes/Album
+        cm.getColumn(2).setMaxWidth(400); // Limite maximale pour éviter qu'elle prenne trop de place
         cm.getColumn(2).setCellRenderer(new MusicCellRenderer(table));
 
         cm.getColumn(3).setPreferredWidth(80);
         cm.getColumn(3).setMaxWidth(100);
         cm.getColumn(3).setCellRenderer(new MainPagePlaylistController.RightHintRenderer());
+        // Nouvelle colonne Date
+        cm.getColumn(4).setPreferredWidth(200); // Largeur augmentée pour la colonne Date
+        cm.getColumn(4).setMaxWidth(250); // Limite maximale plus large pour la colonne Date
+        // Optionnel: on peut ajouter un renderer spécifique pour la date si besoin
 
         // Double clic -> ouvrir ArtisteEditor
         table.addMouseListener(new MouseAdapter() {
@@ -120,7 +143,17 @@ public class MainPageMusiqueController {
                     ? m.getCoverImageURL()
                     : defaultCover;
 
-            model.addRow(new Object[]{m.getId(), cover, title + "\n" + subtitle, duration});
+            // Affichage dynamique selon le type de date sélectionné
+            String date = "";
+            if ("Date d'ajout".equals(dateType)) {
+                if (m.getDateAjout() != null) {
+                    date = m.getDateAjout().format(root.getMenuController().getDateFormatter());
+                }
+            } else if (m.getAlbum() != null && m.getAlbum().getDateSortie() != null) {
+                date = m.getAlbum().getDateSortie().format(root.getMenuController().getDateFormatter());
+            }
+
+            model.addRow(new Object[]{m.getId(), cover, title + "\n" + subtitle, duration, date});
         }
     }
 
@@ -138,7 +171,7 @@ public class MainPageMusiqueController {
         }
     }
 
-    /* ======= Ajouter ======= */
+    /* ======= Ajouter via le VRAI MusicEditor ======= */
     private void onAddMusicPersisted() {
         JTable playlistTable = root.getView().getTablePlaylist();
         JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
@@ -150,70 +183,29 @@ public class MainPageMusiqueController {
             return;
         }
 
-        // -- Dialogue léger (fonctionne tout de suite). Remplaçable par MusicEditor si tu exposes des getters/OK. --
-        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 6));
-        JTextField fTitle   = new JTextField();
-        JTextField fArtists = new JTextField(); // "Prenom Nom, Prenom2 Nom2"
-        JTextField fAlbum   = new JTextField();
-        JTextField fDuration= new JTextField(); // "mm:ss"
-        JTextField fCover   = new JTextField();
-
-        panel.add(new JLabel("Titre :"));     panel.add(fTitle);
-        panel.add(new JLabel("Artistes :"));  panel.add(fArtists);
-        panel.add(new JLabel("Album :"));     panel.add(fAlbum);
-        panel.add(new JLabel("Durée (mm:ss) :")); panel.add(fDuration);
-        panel.add(new JLabel("Cover URL (opt) :")); panel.add(fCover);
-
-        int res = JOptionPane.showConfirmDialog(root.getView(), panel, "Ajouter une musique",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (res != JOptionPane.OK_OPTION) return;
-
-        String title = safe(fTitle.getText());
-        String artistsCsv = safe(fArtists.getText());
-        String albumName = safe(fAlbum.getText());
-        String mmss = safe(fDuration.getText());
-        String cover = safe(fCover.getText());
-
-        if (title.isEmpty() || !mmss.matches("^\\d{1,2}:[0-5]\\d$")) {
-            root.showError(root.getView(), "Titre requis et durée au format mm:ss.", "Erreur");
-            return;
-        }
-
-        // Trouver/créer album
-        Album album = null;
-        if (!albumName.isEmpty()) {
-            album = albumDAO.getByName(albumName);
-            if (album == null) {
-                album = new Album(albumName, LocalDate.now(), new ArrayList<>(), null);
-                albumDAO.add(album);
+        // --- Ouvrir le JDialog MusicEditor (modal) branché avec un Listener ---
+        MusicEditor dlg = new MusicEditor(root.getView(), /*autoWire*/ false);
+        MusicEditorController ctrl = dlg.wireControllerWith(new MusicEditorController.Listener() {
+            @Override
+            public void onMusicCreated(Musique created) {
+                // l’objet a déjà été persisté par MusicEditorController -> on lie à la playlist + persist
+                playlist.ajouterMusique(created);
+                playlistDAO.update(playlist);
+                // Rafraîchir la table de droite
+                loadMusicsForPlaylist(musicTable, playlist);
+                // sélectionner la dernière ligne (la musique ajoutée)
+                int last = musicTable.getModel().getRowCount() - 1;
+                if (last >= 0) musicTable.setRowSelectionInterval(last, last);
             }
-        }
-
-        // Trouver/créer artistes
-        List<Artiste> artistes = new ArrayList<>();
-        if (!artistsCsv.isEmpty()) {
-            for (String part : artistsCsv.split(",")) {
-                String name = safe(part);
-                if (name.isEmpty()) continue;
-                Artiste a = findOrCreateArtistByDisplayName(name);
-                artistes.add(a);
+            @Override
+            public void onMusicUpdated(Musique updated) {
+                // non utilisé ici (cas création)
             }
-        }
-
-        // Créer + persister musique
-        float minutes = mmSsToFloatMinutes(mmss);
-        Musique m = new Musique(title, minutes, album, artistes, cover.isEmpty()? null : cover);
-        musicDAO.add(m);
-
-        // Lier à la playlist + persister playlist
-        playlist.ajouterMusique(m);
-        playlistDAO.update(playlist);
-
-        // Rafraîchir la table de droite
-        loadMusicsForPlaylist(musicTable, playlist);
+        });
+        ctrl.openForCreate(root.getView());
     }
 
-    /* ======= Modifier ======= */
+    /* ======= Modifier via le VRAI MusicEditor ======= */
     private void onEditMusicPersisted() {
         JTable playlistTable = root.getView().getTablePlaylist();
         JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
@@ -239,76 +231,24 @@ public class MainPageMusiqueController {
             return;
         }
 
-        // Préremplir
-        String title0 = music.getTitre();
-        String artists0 = joinArtists(music.getArtistes());
-        String album0 = (music.getAlbum() != null) ? music.getAlbum().getTitreAlbum() : "";
-        String mmss0 = formatDuration(music.getDuree());
-        String cover0 = (music.getCoverImageURL() != null) ? music.getCoverImageURL() : "";
+        // --- Ouvrir le JDialog MusicEditor (modal) branché avec un Listener ---
+        MusicEditor dlg = new MusicEditor(root.getView(), /*autoWire*/ false);
+        MusicEditorController ctrl = dlg.wireControllerWith(new MusicEditorController.Listener() {
+            @Override
+            public void onMusicCreated(Musique created) { /* non utilisé en édition */ }
 
-        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 6));
-        JTextField fTitle   = new JTextField(title0);
-        JTextField fArtists = new JTextField(artists0);
-        JTextField fAlbum   = new JTextField(album0);
-        JTextField fDuration= new JTextField(mmss0);
-        JTextField fCover   = new JTextField(cover0);
-
-        panel.add(new JLabel("Titre :"));     panel.add(fTitle);
-        panel.add(new JLabel("Artistes :"));  panel.add(fArtists);
-        panel.add(new JLabel("Album :"));     panel.add(fAlbum);
-        panel.add(new JLabel("Durée (mm:ss) :")); panel.add(fDuration);
-        panel.add(new JLabel("Cover URL (opt) :")); panel.add(fCover);
-
-        int res = JOptionPane.showConfirmDialog(root.getView(), panel, "Modifier la musique",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (res != JOptionPane.OK_OPTION) return;
-
-        String title = safe(fTitle.getText());
-        String artistsCsv = safe(fArtists.getText());
-        String albumName = safe(fAlbum.getText());
-        String mmss = safe(fDuration.getText());
-        String cover = safe(fCover.getText());
-
-        if (title.isEmpty() || !mmss.matches("^\\d{1,2}:[0-5]\\d$")) {
-            root.showError(root.getView(), "Titre requis et durée au format mm:ss.", "Erreur");
-            return;
-        }
-
-        // Album
-        Album album = null;
-        if (!albumName.isEmpty()) {
-            album = albumDAO.getByName(albumName);
-            if (album == null) {
-                album = new Album(albumName, LocalDate.now(), new ArrayList<>(), null);
-                albumDAO.add(album);
+            @Override
+            public void onMusicUpdated(Musique updated) {
+                // l’objet a déjà été persisté par MusicEditorController
+                // on met juste à jour la playlist + UI
+                playlistDAO.update(playlist);
+                loadMusicsForPlaylist(musicTable, playlist);
+                // on tente de reselectionner la même ligne
+                int rowToSelect = Math.min(modelRow, musicTable.getModel().getRowCount() - 1);
+                if (rowToSelect >= 0) musicTable.setRowSelectionInterval(rowToSelect, rowToSelect);
             }
-        }
-
-        // Artistes
-        List<Artiste> artistes = new ArrayList<>();
-        if (!artistsCsv.isEmpty()) {
-            for (String part : artistsCsv.split(",")) {
-                String name = safe(part);
-                if (name.isEmpty()) continue;
-                Artiste a = findOrCreateArtistByDisplayName(name);
-                artistes.add(a);
-            }
-        }
-
-        // Mettre à jour l'objet en mémoire
-        music.setTitre(title);
-        music.setCoverImageURL(cover.isEmpty() ? null : cover);
-        music.setAlbum(album);
-        trySetArtists(music, artistes);
-        trySetDuration(music, mmSsToFloatMinutes(mmss));
-
-        // Persister la musique et la playlist
-        musicDAO.update(music);
-        playlistDAO.update(playlist);
-
-        // Refresh UI
-        loadMusicsForPlaylist(musicTable, playlist);
-        musicTable.setRowSelectionInterval(modelRow, modelRow);
+        });
+        ctrl.openForEdit(root.getView(), music);
     }
 
     /* ======= Supprimer ======= */
@@ -319,7 +259,7 @@ public class MainPageMusiqueController {
 
         Playlist playlist = getSelectedPlaylist(playlistTable);
         if (playlist == null) {
-            root.showInfo(root.getView(), "Sélectionne une playlist.", "Supprimer musique");
+            root.showInfo(root.getView(), "Sélectionne d'abord une playlist.", "Supprimer musique");
             return;
         }
 
@@ -449,8 +389,8 @@ public class MainPageMusiqueController {
     private boolean sameArtist(Artiste a, Artiste b) {
         if (a == b) return true;
         if (a == null || b == null) return false;
-        String ak = (safe(a.getPrenom()) + "|" + safe(a.getNom()) + "|" + safe(a.getPseudo())).toLowerCase();
-        String bk = (safe(b.getPrenom()) + "|" + safe(b.getNom()) + "|" + safe(b.getPseudo())).toLowerCase();
+        String ak = safe(a.getPseudo()).toLowerCase();
+        String bk = safe(b.getPseudo()).toLowerCase();
         return ak.equals(bk);
     }
 
@@ -458,12 +398,9 @@ public class MainPageMusiqueController {
         if (artistes == null || artistes.isEmpty()) return "";
         List<String> names = new ArrayList<>();
         for (Artiste a : artistes) {
-            String prenom = safe(a.getPrenom());
-            String nom = safe(a.getNom());
-            String full = (prenom + " " + nom).trim();
-            if (full.isBlank()) full = safe(a.getPseudo());
-            if (full.isBlank()) full = "Inconnu";
-            names.add(full);
+            String pseudo = safe(a.getPseudo());
+            if (pseudo.isBlank()) pseudo = "Inconnu";
+            names.add(pseudo);
         }
         return String.join(", ", names);
     }
@@ -485,25 +422,13 @@ public class MainPageMusiqueController {
     private String safe(String s) { return (s == null) ? "" : s.trim(); }
 
     private Artiste findOrCreateArtistByDisplayName(String display) {
-        // On tente d'abord par pseudo (le plus distinctif)
         Artiste a = artisteDAO.getByName(display);
         if (a != null) return a;
-
-        // Heuristique simple Prenom Nom
-        String prenom = "", nom = "";
-        String[] parts = display.split("\\s+");
-        if (parts.length >= 2) {
-            prenom = parts[0];
-            nom = display.substring(prenom.length()).trim();
-        } else {
-            // si un seul token, on met en pseudo
-            return createArtist("", "", display);
-        }
-        return createArtist(nom, prenom, "");
+        return createArtist(display);
     }
 
-    private Artiste createArtist(String nom, String prenom, String pseudo) {
-        Artiste a = new Artiste(nom, prenom, pseudo, new ArrayList<>());
+    private Artiste createArtist(String pseudo) {
+        Artiste a = new Artiste(pseudo, new ArrayList<>());
         artisteDAO.add(a);
         return a;
     }

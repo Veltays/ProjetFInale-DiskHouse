@@ -26,8 +26,16 @@ import java.nio.file.Paths;
  * - Chargement image fiable (ImageIO) depuis URL/fichier/ressource
  *
  * Ouverture typique depuis MainPage (JFrame) :
- *   MusicEditor dlg = new MusicEditor(mainFrame);
- *   dlg.setVisible(true);
+ *   // sans listener (comportement interne)
+ *   new MusicEditor(mainFrame).setVisible(true);
+ *
+ *   // AVEC listener (ex: pour rafraîchir playlist après save)
+ *   MusicEditor dlg = new MusicEditor(mainFrame, /*autoWire* / false);
+ *   new MusicEditorController(dlg, myListener).initController();
+ *   // OU encore plus simple :
+ *   dlg.wireControllerWith(myListener);
+ *   // puis :
+ *   ctrl.openForCreate(mainFrame);  // ou openForEdit(...)
  */
 public class MusicEditor extends JDialog {
 
@@ -53,6 +61,17 @@ public class MusicEditor extends JDialog {
 
     /** Constructeur modale, attaché à une fenêtre parente (recommandé). */
     public MusicEditor(Window owner) {
+        this(owner, true);
+    }
+
+    /** Constructeur sans parent (fallback / démo). */
+    public MusicEditor() { this(null, true); }
+
+    /**
+     * Constructeur avancé : possibilité de désactiver l'auto‑wiring du contrôleur
+     * pour pouvoir injecter un Listener depuis l'extérieur.
+     */
+    public MusicEditor(Window owner, boolean autoWireController) {
         super(owner, "DiskHouse - Music Editor", ModalityType.APPLICATION_MODAL);
         $$$setupUI$$$();                // crée TOUT (y compris les boutons)
         setContentPane(mainPanel);
@@ -64,20 +83,30 @@ public class MusicEditor extends JDialog {
         pack();
         setLocationRelativeTo(owner);
 
-        // branche le contrôleur ici (comme dans PlaylistEditor)
-        wireController();
+        if (autoWireController) {
+            wireController(); // version interne, sans listener
+        }
 
         cancelButton.addActionListener(e -> dispose());
     }
 
-    /** Constructeur sans parent (fallback / démo). */
-    public MusicEditor() { this(null); }
-
-    /** Instancie et initialise le contrôleur une seule fois. */
+    /** Instancie et initialise le contrôleur une seule fois (sans listener). */
     private void wireController() {
         if (controllerWired) return;
         new MusicEditorController(this).initController();
         controllerWired = true;
+    }
+
+    /**
+     * Variante : branche le contrôleur avec un Listener fourni par l'appelant (MainPage).
+     * Renvoie l'instance créée pour que l'appelant puisse appeler openForCreate/openForEdit.
+     */
+    public MusicEditorController wireControllerWith(MusicEditorController.Listener listener) {
+        if (controllerWired) return null;
+        MusicEditorController c = new MusicEditorController(this, listener);
+        c.initController();
+        controllerWired = true;
+        return c;
     }
 
     /* ======== API contrôleurs ======== */
@@ -99,6 +128,14 @@ public class MusicEditor extends JDialog {
             return;
         }
         int w = img.getWidth(null), h = img.getHeight(null);
+        // Forcer le chargement de l'image si besoin (boucle courte)
+        int tries = 0;
+        while ((w <= 0 || h <= 0) && tries < 10) {
+            try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+            w = img.getWidth(null);
+            h = img.getHeight(null);
+            tries++;
+        }
         if (w <= 0 || h <= 0) {
             imagePreviewLabel.setIcon(null);
             imagePreviewLabel.setText("image");
@@ -121,11 +158,31 @@ public class MusicEditor extends JDialog {
     }
 
     public void setPreviewImage(String pathOrUrl) {
+        if (pathOrUrl == null || pathOrUrl.isEmpty()) {
+            imagePreviewLabel.setIcon(null);
+            imagePreviewLabel.setText("image");
+            return;
+        }
         try {
             BufferedImage img = loadImageBlocking(pathOrUrl);
-            setPreviewImage(img);
-        } catch (IOException e) {
-            setPreviewImage((Image) null);
+            if (img == null) throw new IOException();
+            int w = img.getWidth(null), h = img.getHeight(null);
+            int box = PREVIEW_BOX;
+            double s = Math.min(box / (double) w, box / (double) h);
+            int nw = Math.max(1, (int) Math.round(w * s));
+            int nh = Math.max(1, (int) Math.round(h * s));
+            Image scaled = img.getScaledInstance(nw, nh, Image.SCALE_SMOOTH);
+            BufferedImage canvas = new BufferedImage(box, box, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = canvas.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            int x = (box - nw) / 2, y = (box - nh) / 2;
+            g.drawImage(scaled, x, y, null);
+            g.dispose();
+            imagePreviewLabel.setText(null);
+            imagePreviewLabel.setIcon(new ImageIcon(canvas));
+        } catch (Exception e) {
+            imagePreviewLabel.setIcon(null);
+            imagePreviewLabel.setText("image");
         }
     }
 

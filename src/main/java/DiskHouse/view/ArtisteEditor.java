@@ -7,18 +7,26 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 
 /**
- * Vue "Artiste" sous forme de JDialog MODAL.
- * - Uniquement UI (respect MVC). Aucune logique métier ici.
- * - GridLayoutManager (IntelliJ) respecté.
+ * Vue "Artiste" (JDialog MODAL, sans logique métier).
+ * - Placeholders visuels:
+ *    * Portrait: "Choisir une image"
+ *    * Champ artiste: "Choisir un artiste"
+ *    * Albums: "Ajouter un album" si liste vide
+ * - Hauteurs/tailles compactées.
+ * - Aucun focus texte au premier affichage (focus sur la pochette).
  *
- * Le contrôleur utilise notamment :
- *   - setArtistName(String)
- *   - setPortraitImage(Image)
- *   - getAlbumsList(), getAddAlbumButtonView(), getRemoveAlbumButtonView()
- *   - getOkButton(), getCancelButton(), getEditArtistButton(), getPortraitLabel(), getArtistNameField()
+ * Le contrôleur utilise :
+ *   - setArtistName(String), setPortraitImage(Image)
+ *   - getPortraitLabel(), getArtistNameField(), getEditArtistButton()
+ *   - getAlbumsList(), getAlbumsScroll(), getAddAlbumButtonView(), getRemoveAlbumButtonView()
+ *   - getCancelButton(), getOkButton(), ensureAlbumsPlaceholder()
  */
 public class ArtisteEditor extends JDialog {
 
@@ -29,49 +37,58 @@ public class ArtisteEditor extends JDialog {
     private JLabel logoLabel;
     private JLabel appTitleLabel;
 
-    // Ligne d’entête artiste
-    private JLabel portraitLabel;         // portrait (cliquable par le contrôleur)
-    private JTextField artistNameField;   // nom artiste (éditable)
-    private JButton editArtistButton;     // ✎
+    // Ligne artiste
+    private JLabel portraitLabel;       // pochette cliquable
+    private JTextField artistNameField; // pseudo
+    private JButton editArtistButton;   // ✎
 
-    // Zone liste des albums
-    private JLabel albumsLabel;           // "Albums"
+    // Albums
+    private JLabel albumsLabel;
     private JList<String> albumsList;
     private JScrollPane albumsScroll;
+    private JPanel albumsPlaceholderPanel; // placeholder si vide
 
-    // Actions liste
-    private JButton addAlbumButton;       // +
-    private JButton removeAlbumButton;    // 🗑
+    // Actions albums
+    private JButton addAlbumButton;     // +
+    private JButton removeAlbumButton;  // 🗑
 
-    // Bas de dialogue
+    // Bas
     private JButton cancelButton;
     private JButton okButton;
 
-    // Constantes UI
-    private static final Dimension PORTRAIT_SIZE = new Dimension(140, 140);
+    // UI
+    private static final Dimension PORTRAIT_SIZE = new Dimension(120, 120); // ← plus petit
     private static final Color BLUE = new Color(0x0E2A62);
+    private static final Color PLACEHOLDER = new Color(0x9AAAC3);
 
-    /** Constructeur conseillé : attaché à une fenêtre parente, modale. */
     public ArtisteEditor(Window owner) {
         super(owner, "DiskHouse - Artiste", ModalityType.APPLICATION_MODAL);
         $$$setupUI$$$();
-
         setContentPane(mainPanel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        styliser();
 
-        setMinimumSize(new Dimension(680, 520));
+        styliser();
+        refreshAlbumsPlaceholder();
+
+        // Pas de focus texte à l’ouverture : on force le focus sur la pochette
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowOpened(WindowEvent e) {
+                SwingUtilities.invokeLater(() -> portraitLabel.requestFocusInWindow());
+            }
+        });
+
+        setMinimumSize(new Dimension(640, 480));
         setLocationRelativeTo(owner);
+        // NE PAS setVisible ici (le contrôleur gère)
     }
 
-    /** Fallback démo sans parent. */
     public ArtisteEditor() { this(null); }
 
-    /* ===================== Styling ===================== */
+    /* -------------------- Styling -------------------- */
 
     private void styliser() {
         mainPanel.setBackground(Color.WHITE);
-        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        mainPanel.setBorder(new EmptyBorder(16, 16, 16, 16)); // marges un peu plus petites
 
         appTitleLabel.setText("DiskHouse");
         appTitleLabel.setFont(appTitleLabel.getFont().deriveFont(Font.BOLD, 18f));
@@ -85,36 +102,98 @@ public class ArtisteEditor extends JDialog {
         portraitLabel.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
         portraitLabel.setHorizontalAlignment(SwingConstants.CENTER);
         portraitLabel.setVerticalAlignment(SwingConstants.CENTER);
+        portraitLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        portraitLabel.setToolTipText("Choisir une image");
+        portraitLabel.setFocusable(true); // pour pouvoir y mettre le focus au démarrage
+        setPortraitPlaceholder();
 
-        // Nom artiste (EDITABLE)
-        artistNameField.setText("");
+        // Champ artiste + placeholder + taille plus compacte
         artistNameField.setBorder(null);
-        artistNameField.setFont(artistNameField.getFont().deriveFont(Font.BOLD, 42f));
+        artistNameField.setFont(artistNameField.getFont().deriveFont(Font.BOLD, 28f));
         artistNameField.setForeground(BLUE);
         artistNameField.setOpaque(false);
+        installTextPlaceholder(artistNameField, "Choisir un pseudo");
 
-        // Bouton éditer (focus + selectAll géré par controller)
+        // Bouton ✎
         styliserAction(editArtistButton, "✎");
+        editArtistButton.setToolTipText("Éditer le pseudo");
 
-        // Libellé "Albums"
+        // Albums
         albumsLabel.setText("Albums");
-        albumsLabel.setFont(albumsLabel.getFont().deriveFont(Font.BOLD, 14f));
+        albumsLabel.setFont(albumsLabel.getFont().deriveFont(Font.BOLD, 13f));
         albumsLabel.setForeground(Color.DARK_GRAY);
 
-        // Liste albums
-        albumsList.setVisibleRowCount(10);
+        // Liste albums plus compacte
+        albumsList.setVisibleRowCount(5);              // ← 6 -> 5
         albumsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        albumsList.setFixedCellHeight(28);
-        albumsList.setBorder(new EmptyBorder(6, 12, 6, 12));
+        albumsList.setFixedCellHeight(24);             // ← 28 -> 24
+        albumsList.setBorder(new EmptyBorder(4, 10, 4, 10));
         albumsScroll.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
+        albumsScroll.setPreferredSize(new Dimension(540, 170)); // ← 560x220 -> 540x170
 
-        // Boutons liste
+        // Placeholder "Ajouter un album"
+        albumsPlaceholderPanel = new JPanel(new GridBagLayout());
+        albumsPlaceholderPanel.setBackground(Color.WHITE);
+        JLabel ph = new JLabel("Ajouter un album");
+        ph.setForeground(PLACEHOLDER);
+        ph.setFont(ph.getFont().deriveFont(Font.ITALIC, 13f));
+        albumsPlaceholderPanel.add(ph);
+        if (albumsList.getModel() instanceof DefaultListModel<?> dm) {
+            dm.addListDataListener(new javax.swing.event.ListDataListener() {
+                @Override public void intervalAdded(javax.swing.event.ListDataEvent e) { refreshAlbumsPlaceholder(); }
+                @Override public void intervalRemoved(javax.swing.event.ListDataEvent e) { refreshAlbumsPlaceholder(); }
+                @Override public void contentsChanged(javax.swing.event.ListDataEvent e) { refreshAlbumsPlaceholder(); }
+            });
+        }
+
+        // Boutons
         styliserAction(addAlbumButton, "＋");
+        addAlbumButton.setToolTipText("Ajouter un album");
         styliserAction(removeAlbumButton, "🗑");
+        removeAlbumButton.setToolTipText("Supprimer l’album sélectionné");
 
         // Bas
         styleGhost(cancelButton, "Annuler");
         stylePrimary(okButton, "Enregistrer");
+    }
+
+    private void setPortraitPlaceholder() {
+        portraitLabel.setIcon(null);
+        portraitLabel.setText("<html><div style='text-align:center;color:#5b6b85;'>Choisir<br>une image</div></html>");
+    }
+
+    private void installTextPlaceholder(JTextField field, String placeholderText) {
+        field.setToolTipText(placeholderText);
+        Color normalColor = BLUE;
+
+        Runnable applyPh = () -> {
+            if (field.getText() == null || field.getText().isBlank()) {
+                field.setForeground(PLACEHOLDER);
+                field.setFont(field.getFont().deriveFont(Font.ITALIC, field.getFont().getSize2D()));
+                field.setText(placeholderText);
+            }
+        };
+        Runnable removePh = () -> {
+            if (field.getForeground().equals(PLACEHOLDER) && placeholderText.equals(field.getText())) {
+                field.setText("");
+                field.setFont(field.getFont().deriveFont(Font.PLAIN, field.getFont().getSize2D()));
+                field.setForeground(normalColor);
+            }
+        };
+
+        applyPh.run();
+        field.addFocusListener(new FocusAdapter() {
+            @Override public void focusGained(FocusEvent e) { removePh.run(); }
+            @Override public void focusLost(FocusEvent e)  { applyPh.run(); }
+        });
+    }
+
+    private void refreshAlbumsPlaceholder() {
+        boolean empty = albumsList.getModel().getSize() == 0;
+        if (empty) albumsScroll.setViewportView(albumsPlaceholderPanel);
+        else       albumsScroll.setViewportView(albumsList);
+        albumsScroll.revalidate();
+        albumsScroll.repaint();
     }
 
     private void styliserAction(JButton b, String text) {
@@ -122,7 +201,7 @@ public class ArtisteEditor extends JDialog {
         b.setFocusPainted(false);
         b.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(BLUE, 2, true),
-                new EmptyBorder(6, 12, 6, 12)
+                new EmptyBorder(6, 10, 6, 10)
         ));
         b.setForeground(BLUE);
         b.setBackground(Color.WHITE);
@@ -134,7 +213,7 @@ public class ArtisteEditor extends JDialog {
         b.setFocusPainted(false);
         b.setBackground(BLUE);
         b.setForeground(Color.WHITE);
-        b.setBorder(new EmptyBorder(8, 16, 8, 16));
+        b.setBorder(new EmptyBorder(7, 14, 7, 14)); // compact
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
@@ -146,21 +225,23 @@ public class ArtisteEditor extends JDialog {
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    /* ===================== API attendue par le contrôleur ===================== */
+    /* -------------------- API pour contrôleur -------------------- */
 
-    /** Définit le nom affiché dans le champ. */
     public void setArtistName(String name) {
-        artistNameField.setText(name != null ? name : "");
-        artistNameField.setCaretPosition(artistNameField.getText().length());
+        if (name == null || name.isBlank()) {
+            artistNameField.setText("");
+            artistNameField.postActionEvent();
+        } else {
+            artistNameField.setText(name);
+            artistNameField.setCaretPosition(artistNameField.getText().length());
+            artistNameField.setForeground(BLUE);
+            artistNameField.setFont(artistNameField.getFont().deriveFont(Font.BOLD, 28f));
+        }
     }
 
-    /** Portrait centré dans PORTRAIT_SIZE. */
+    /** Centre l’image dans un carré PORTRAIT_SIZE. */
     public void setPortraitImage(Image source) {
-        if (source == null) {
-            portraitLabel.setIcon(null);
-            portraitLabel.setText("");
-            return;
-        }
+        if (source == null) { setPortraitPlaceholder(); return; }
         int box = PORTRAIT_SIZE.width;
         int w = source.getWidth(null), h = source.getHeight(null);
         if (w <= 0 || h <= 0) return;
@@ -173,6 +254,7 @@ public class ArtisteEditor extends JDialog {
         BufferedImage canvas = new BufferedImage(box, box, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = canvas.createGraphics();
         int x = (box - nw) / 2, y = (box - nh) / 2;
+        g.setComposite(AlphaComposite.SrcOver);
         g.drawImage(scaled, x, y, null);
         g.dispose();
 
@@ -180,7 +262,30 @@ public class ArtisteEditor extends JDialog {
         portraitLabel.setIcon(new ImageIcon(canvas));
     }
 
-    /* ===================== Getters MVC ===================== */
+    public void setPortraitImage(String imageURL) {
+        if (imageURL == null || imageURL.isEmpty()) {
+            setPortraitPlaceholder();
+            return;
+        }
+        try {
+            ImageIcon icon;
+            if (imageURL.startsWith("http") || imageURL.startsWith("file:")) {
+                java.net.URL url = java.net.URI.create(imageURL).toURL();
+                icon = new ImageIcon(url);
+            } else {
+                icon = new ImageIcon(imageURL);
+            }
+            Image img = icon.getImage().getScaledInstance(PORTRAIT_SIZE.width, PORTRAIT_SIZE.height, Image.SCALE_SMOOTH);
+            portraitLabel.setIcon(new ImageIcon(img));
+            portraitLabel.setText("");
+        } catch (Exception e) {
+            setPortraitPlaceholder();
+        }
+    }
+
+    public void ensureAlbumsPlaceholder() { refreshAlbumsPlaceholder(); }
+
+    // Getters MVC
     public JLabel getPortraitLabel() { return portraitLabel; }
     public JTextField getArtistNameField() { return artistNameField; }
     public JButton getEditArtistButton() { return editArtistButton; }
@@ -191,21 +296,21 @@ public class ArtisteEditor extends JDialog {
     public JButton getCancelButton() { return cancelButton; }
     public JButton getOkButton() { return okButton; }
 
-    /* ===================== Layout (GridLayoutManager) ===================== */
+    /* -------------------- Layout (IntelliJ GridLayoutManager) -------------------- */
     private void $$$setupUI$$$() {
         mainPanel = new JPanel();
         mainPanel.setLayout(new GridLayoutManager(14, 3, new Insets(0, 0, 0, 0), 0, 0));
 
-        // Colonnes de respiration (0 et 2)
-        mainPanel.add(empty(),
-                new GridConstraints(0, 0, 14, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
-        mainPanel.add(empty(),
-                new GridConstraints(0, 2, 14, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        // colonnes respirations
+        mainPanel.add(empty(), new GridConstraints(0, 0, 14, 1,
+                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
+        mainPanel.add(empty(), new GridConstraints(0, 2, 14, 1,
+                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
 
-        // Header : logo + titre appli
-        JPanel header = new JPanel(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), 8, 0));
+        // header
+        JPanel header = new JPanel(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), 6, 0));
         header.setOpaque(false);
         mainPanel.add(header, new GridConstraints(0, 1, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
@@ -222,12 +327,12 @@ public class ArtisteEditor extends JDialog {
                 GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
         // espace
-        mainPanel.add(space(12), new GridConstraints(1, 1, 1, 1,
+        mainPanel.add(space(8), new GridConstraints(1, 1, 1, 1,
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        // Ligne Artiste (portrait + nom + bouton edit)
-        JPanel row = new JPanel(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), 12, 0));
+        // ligne artiste
+        JPanel row = new JPanel(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), 10, 0));
         row.setOpaque(false);
         mainPanel.add(row, new GridConstraints(2, 1, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
@@ -249,26 +354,26 @@ public class ArtisteEditor extends JDialog {
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
         // espace
-        mainPanel.add(space(12), new GridConstraints(3, 1, 1, 1,
+        mainPanel.add(space(8), new GridConstraints(3, 1, 1, 1,
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        // Label "Albums"
+        // label albums
         albumsLabel = new JLabel("Albums");
         mainPanel.add(albumsLabel, new GridConstraints(4, 1, 1, 1,
                 GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        // Liste
+        // liste albums
         albumsList = new JList<>(new DefaultListModel<>());
         albumsScroll = new JScrollPane(albumsList, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        mainPanel.add(albumsScroll, new GridConstraints(5, 1, 6, 1,
+        mainPanel.add(albumsScroll, new GridConstraints(5, 1, 5, 1, // ← hauteur globale moindre (6 -> 5 rows)
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_WANT_GROW,
-                null, new Dimension(560, 340), null, 0, false));
+                null, new Dimension(540, 170), null, 0, false));
 
-        // Actions ( + / 🗑 )
-        JPanel actions = new JPanel(new GridLayoutManager(1, 5, new Insets(0, 0, 0, 0), 12, 0));
+        // actions
+        JPanel actions = new JPanel(new GridLayoutManager(1, 5, new Insets(0, 0, 0, 0), 10, 0));
         actions.setOpaque(false);
 
         addAlbumButton = new JButton();
@@ -290,12 +395,12 @@ public class ArtisteEditor extends JDialog {
                 0, 3, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
 
-        mainPanel.add(actions, new GridConstraints(11, 1, 1, 1,
+        mainPanel.add(actions, new GridConstraints(10, 1, 1, 1,
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                 GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
-        // Bas : Annuler / Enregistrer
-        JPanel bottom = new JPanel(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), 8, 0));
+        // bas : boutons
+        JPanel bottom = new JPanel(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), 6, 0));
         bottom.setOpaque(false);
         bottom.add(empty(), new GridConstraints(
                 0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
@@ -308,12 +413,12 @@ public class ArtisteEditor extends JDialog {
         bottom.add(okButton, new GridConstraints(
                 0, 2, 1, 1, GridConstraints.ANCHOR_EAST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        mainPanel.add(bottom, new GridConstraints(12, 1, 1, 1,
+        mainPanel.add(bottom, new GridConstraints(11, 1, 1, 1,
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                 GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
 
         // espace bas
-        mainPanel.add(space(8), new GridConstraints(13, 1, 1, 1,
+        mainPanel.add(space(6), new GridConstraints(12, 1, 2, 1,
                 GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
@@ -329,10 +434,5 @@ public class ArtisteEditor extends JDialog {
         JPanel p = new JPanel();
         p.setOpaque(false);
         return p;
-    }
-
-    /** Démo locale. */
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new ArtisteEditor().setVisible(true));
     }
 }

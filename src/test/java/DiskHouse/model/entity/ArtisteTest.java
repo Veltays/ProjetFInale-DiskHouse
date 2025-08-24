@@ -27,19 +27,7 @@ class ArtisteTest {
         List<Album> albums = new ArrayList<>();
         album = new Album("Test Album", getDate(2023), new ArrayList<>());
         albums.add(album);
-        artiste = new Artiste("Sabrina", "Carpenter", "Sabi", albums);
-    }
-
-    @Test
-    void setNom() {
-        artiste.setNom("Dua");
-        assertEquals("Dua", artiste.getNom(), "Le nom de l'artiste devrait être 'Dua'");
-    }
-
-    @Test
-    void setPrenom() {
-        artiste.setPrenom("Lipa");
-        assertEquals("Lipa", artiste.getPrenom(), "Le prénom de l'artiste devrait être 'Lipa'");
+        artiste = new Artiste("Sabi", albums);
     }
 
     @Test
@@ -58,16 +46,6 @@ class ArtisteTest {
     }
 
     @Test
-    void getNom() {
-        assertEquals("Sabrina", artiste.getNom(), "Le nom de l'artiste devrait être 'Sabrina'");
-    }
-
-    @Test
-    void getPrenom() {
-        assertEquals("Carpenter", artiste.getPrenom(), "Le prénom de l'artiste devrait être 'Carpenter'");
-    }
-
-    @Test
     void getPseudo() {
         assertEquals("Sabi", artiste.getPseudo(), "Le pseudo de l'artiste devrait être 'Sabi'");
     }
@@ -80,17 +58,15 @@ class ArtisteTest {
     @Test
     void testToString() {
         String expectedString = "Artiste [\n" +
-                "  Id     : " + artiste.getId() + "\n" +
-                "  Nom     : Sabrina\n" +
-                "  Prénom  : Carpenter\n" +
+                "  Id      : " + artiste.getId() + "\n" +
                 "  Pseudo  : Sabi\n" +
-                "  Albums  :\n    - Test Album\n]";
+                "  Albums  : \n    - Test Album\n]";
         assertEquals(expectedString, artiste.toString(), "La méthode toString ne retourne pas la chaîne attendue");
     }
 
     @Test
     void testEquals() {
-        Artiste sameArtiste = new Artiste("Sabrina", "Carpenter", "Sabi", artiste.getAlbums());
+        Artiste sameArtiste = new Artiste("Sabi", artiste.getAlbums());
         assertTrue(artiste.equals(sameArtiste), "Les artistes devraient être égaux");
     }
 }

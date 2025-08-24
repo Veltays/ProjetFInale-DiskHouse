@@ -60,26 +60,33 @@ public class PlaylistFileDAO implements IDAO<Playlist> {
 
         try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
             while (dis.available() > 0) {
-                int pid = dis.readInt();
-                String nom = dis.readUTF();
-                int nbMusiques = dis.readInt();
-                String cover = dis.readUTF();
+                try {
+                    int pid = dis.readInt();
+                    String nom = dis.readUTF();
+                    int nbMusiques = dis.readInt();
+                    String cover = dis.readUTF();
 
-                Playlist p = new Playlist(nom, new ArrayList<>());
-                applyId(p, pid);
-                p.setCoverImageURL(cover);
+                    Playlist p = new Playlist(nom, new ArrayList<>());
+                    applyId(p, pid);
+                    p.setCoverImageURL(cover);
 
-                // Lire les IDs et créer des placeholders (uniquement l'id)
-                List<Musique> placeholders = new ArrayList<>(nbMusiques);
-                for (int i = 0; i < nbMusiques; i++) {
-                    int mid = dis.readInt();
-                    Musique ph = new Musique("(lazy)", 0f, null, new ArrayList<>(), "");
-                    applyId(ph, mid);
-                    placeholders.add(ph);
+                    // Lire les IDs et créer des placeholders (uniquement l'id)
+                    List<Musique> placeholders = new ArrayList<>(nbMusiques);
+                    for (int i = 0; i < nbMusiques; i++) {
+                        int mid = dis.readInt();
+                        Musique ph = new Musique("(lazy)", 0f, null, new ArrayList<>(), "");
+                        applyId(ph, mid);
+                        placeholders.add(ph);
+                    }
+                    p.setMusiques(placeholders);
+
+                    playlists.add(p);
+                } catch (EOFException eof) {
+                    System.err.println("Fichier playlists.dat corrompu ou incomplet : playlist ignorée.");
+                    break;
+                } catch (IOException e) {
+                    System.err.println("Erreur de lecture d'une playlist : " + e.getMessage());
                 }
-                p.setMusiques(placeholders);
-
-                playlists.add(p);
             }
         } catch (IOException e) {
             e.printStackTrace();

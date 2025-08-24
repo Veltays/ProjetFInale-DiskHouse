@@ -48,6 +48,7 @@ public class MainPageController implements IController<MainPage> {
         playlistController = new MainPagePlaylistController(this);
         musiqueController  = new MainPageMusiqueController(this);
         menuController     = new MainPageMenuController(this); // placeholder
+        menuController.wireMenuListeners();
 
         // Initialisation des tables
         if (view.getTablePlaylist() != null) {
@@ -72,6 +73,29 @@ public class MainPageController implements IController<MainPage> {
                                 musiqueController.loadMusicsForPlaylist(view.getTableMusicInPlaylistSelected(), selected);
                             } else {
                                 musiqueController.clearMusicTable(view.getTableMusicInPlaylistSelected());
+                            }
+                        }
+                        // MAJ du logo de la playlist
+                        if (view.getPhotoPlaylistLabel() != null) {
+                            try {
+                                if (selected != null && selected.getCoverImageURL() != null && !selected.getCoverImageURL().isBlank()) {
+                                    ImageIcon icon = new ImageIcon(new java.net.URL(selected.getCoverImageURL()));
+                                    // Redimensionnement (optionnel)
+                                    Image img = icon.getImage().getScaledInstance(96, 96, Image.SCALE_SMOOTH);
+                                    view.getPhotoPlaylistLabel().setIcon(new ImageIcon(img));
+                                } else {
+                                    // Image par défaut
+                                    java.net.URL url = getClass().getResource("/PP.png");
+                                    if (url != null) {
+                                        ImageIcon icon = new ImageIcon(url);
+                                        Image img = icon.getImage().getScaledInstance(96, 96, Image.SCALE_SMOOTH);
+                                        view.getPhotoPlaylistLabel().setIcon(new ImageIcon(img));
+                                    } else {
+                                        view.getPhotoPlaylistLabel().setIcon(null);
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                view.getPhotoPlaylistLabel().setIcon(null);
                             }
                         }
                     }
@@ -127,5 +151,24 @@ public class MainPageController implements IController<MainPage> {
 
     public List<Playlist> getPlaylists() {
         return playlists;
+    }
+
+    public AlbumFileDAO getAlbumDAO() {
+        return albumDAO;
+    }
+    public MusicFileDAO getMusicDAO() {
+        return musicDAO;
+    }
+    public PlaylistFileDAO getPlaylistDAO() {
+        return playlistDAO;
+    }
+    public ArtisteFileDAO getArtisteDAO() {
+        return artisteDAO;
+    }
+    public MainPageMenuController getMenuController() { return menuController; }
+    public void refreshMusicTableFromMenu() {
+        if (musiqueController != null) {
+            musiqueController.refreshMusicTable();
+        }
     }
 }

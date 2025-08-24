@@ -19,9 +19,8 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
     public void add(Artiste artiste) {
         try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, true))) {
             dos.writeInt(artiste.getId());
-            dos.writeUTF(artiste.getNom());
-            dos.writeUTF(artiste.getPrenom());
             dos.writeUTF(artiste.getPseudo());
+            dos.writeUTF(artiste.getImageURL() == null ? "" : artiste.getImageURL());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -38,7 +37,7 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
     @Override
     public Artiste getByName(String name) {
         for (Artiste a : getAll()) {
-            if (a.getNom().equalsIgnoreCase(name) || a.getPseudo().equalsIgnoreCase(name)) return a;
+            if (a.getPseudo().equalsIgnoreCase(name)) return a;
         }
         return null;
     }
@@ -51,10 +50,9 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
             while (dis.available() > 0) {
                 int id = dis.readInt();
-                String nom = dis.readUTF();
-                String prenom = dis.readUTF();
                 String pseudo = dis.readUTF();
-                Artiste a = new Artiste(nom, prenom, pseudo, new ArrayList<>());
+                String imageURL = dis.readUTF();
+                Artiste a = new Artiste(pseudo, new ArrayList<>(), imageURL.isEmpty() ? null : imageURL);
                 applyId(a, id);
                 artistes.add(a);
             }
@@ -87,9 +85,8 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
             for (Artiste artiste : artistes) {
                 dos.writeInt(artiste.getId());
-                dos.writeUTF(artiste.getNom());
-                dos.writeUTF(artiste.getPrenom());
                 dos.writeUTF(artiste.getPseudo());
+                dos.writeUTF(artiste.getImageURL() == null ? "" : artiste.getImageURL());
             }
         } catch (IOException e) {
             e.printStackTrace();

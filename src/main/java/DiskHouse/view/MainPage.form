@@ -68,6 +68,15 @@
                 </properties>
                 <border type="none"/>
                 <children>
+                  <component id="cb003" class="javax.swing.JLabel">
+                    <constraints>
+                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="9" fill="0" indent="1" use-parent-layout="false"/>
+                    </constraints>
+                    <properties>
+                      <icon value="Fw64aXViQR.png"/>
+                      <text value=""/>
+                    </properties>
+                  </component>
                   <component id="c8e43" class="javax.swing.JLabel">
                     <constraints>
                       <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="9" fill="0" indent="4" use-parent-layout="false"/>
@@ -78,15 +87,6 @@
                       <font name="Britannic Bold" size="72" style="1"/>
                       <foreground color="-15981973"/>
                       <text value="PlaylistName"/>
-                    </properties>
-                  </component>
-                  <component id="cb003" class="javax.swing.JLabel">
-                    <constraints>
-                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="9" fill="0" indent="1" use-parent-layout="false"/>
-                    </constraints>
-                    <properties>
-                      <icon value="Fw64aXViQR.png"/>
-                      <text value=""/>
                     </properties>
                   </component>
                 </children>
@@ -178,7 +178,7 @@
           </grid>
         </children>
       </grid>
-      <grid id="d4142" binding="Musique" layout-manager="GridLayoutManager" row-count="1" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+      <grid id="d4142" binding="Musique" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
         <margin top="0" left="0" bottom="0" right="0"/>
         <constraints>
           <grid row="11" column="0" row-span="5" col-span="4" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
@@ -200,15 +200,9 @@
               <selectionBackground color="-12237498"/>
             </properties>
           </component>
-          <component id="14438" class="javax.swing.JScrollBar" binding="scrollBar1" default-binding="true">
-            <constraints>
-              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="6" hsize-policy="0" anchor="0" fill="2" indent="0" use-parent-layout="false"/>
-            </constraints>
-            <properties/>
-          </component>
         </children>
       </grid>
-      <grid id="7099b" binding="ListePlaylist" layout-manager="GridLayoutManager" row-count="3" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+      <grid id="7099b" binding="ListePlaylist" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
         <margin top="0" left="0" bottom="0" right="0"/>
         <constraints>
           <grid row="12" column="5" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
@@ -232,61 +226,10 @@
               <showHorizontalLines value="false"/>
             </properties>
           </component>
-          <component id="b6f99" class="javax.swing.JScrollBar" binding="scrollBar2" default-binding="true">
-            <constraints>
-              <grid row="0" column="1" row-span="2" col-span="1" vsize-policy="6" hsize-policy="0" anchor="0" fill="2" indent="0" use-parent-layout="false"/>
-            </constraints>
-            <properties/>
-          </component>
-          <grid id="c8407" layout-manager="GridLayoutManager" row-count="1" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
-            <margin top="0" left="0" bottom="0" right="0"/>
-            <constraints>
-              <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="1" fill="0" indent="2" use-parent-layout="false"/>
-            </constraints>
-            <properties>
-              <background color="-327681"/>
-            </properties>
-            <border type="none"/>
-            <children>
-              <component id="9b6fa" class="javax.swing.JButton" binding="AjouterPlaylist">
-                <constraints>
-                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <background color="-327681"/>
-                  <icon value="AjouterMini.png"/>
-                  <label value=""/>
-                  <text value=""/>
-                </properties>
-              </component>
-              <component id="9ca74" class="javax.swing.JButton" binding="SupprimerPlaylist">
-                <constraints>
-                  <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <background color="-327681"/>
-                  <icon value="SupprimerMini.png"/>
-                  <label value=""/>
-                  <text value=""/>
-                </properties>
-              </component>
-              <component id="92f72" class="javax.swing.JButton" binding="ModifierPlaylist">
-                <constraints>
-                  <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="1" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <background color="-327681"/>
-                  <icon value="ModifierMini.png"/>
-                  <label value=""/>
-                  <text value=""/>
-                </properties>
-              </component>
-            </children>
-          </grid>
           <grid id="3cb5b" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="0" bottom="0" right="0"/>
             <constraints>
-              <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+              <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties>
               <background color="-327681"/>
@@ -316,18 +259,54 @@
             </properties>
             <border type="none"/>
             <children>
-              <component id="2c9a3" class="javax.swing.JLabel" binding="PhotoPlaylist">
+              <grid id="c8407" layout-manager="GridLayoutManager" row-count="1" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+                <margin top="0" left="0" bottom="0" right="0"/>
                 <constraints>
-                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="1" fill="0" indent="2" use-parent-layout="false"/>
                 </constraints>
                 <properties>
-                  <icon value="PP.png"/>
-                  <text value=""/>
+                  <background color="-327681"/>
                 </properties>
-              </component>
+                <border type="none"/>
+                <children>
+                  <component id="9b6fa" class="javax.swing.JButton" binding="AjouterPlaylist">
+                    <constraints>
+                      <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
+                    </constraints>
+                    <properties>
+                      <background color="-327681"/>
+                      <icon value="AjouterMini.png"/>
+                      <label value=""/>
+                      <text value=""/>
+                    </properties>
+                  </component>
+                  <component id="9ca74" class="javax.swing.JButton" binding="SupprimerPlaylist">
+                    <constraints>
+                      <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
+                    </constraints>
+                    <properties>
+                      <background color="-327681"/>
+                      <icon value="SupprimerMini.png"/>
+                      <label value=""/>
+                      <text value=""/>
+                    </properties>
+                  </component>
+                  <component id="92f72" class="javax.swing.JButton" binding="ModifierPlaylist">
+                    <constraints>
+                      <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="1" fill="0" indent="0" use-parent-layout="false"/>
+                    </constraints>
+                    <properties>
+                      <background color="-327681"/>
+                      <icon value="ModifierMini.png"/>
+                      <label value=""/>
+                      <text value=""/>
+                    </properties>
+                  </component>
+                </children>
+              </grid>
             </children>
           </grid>
-          <grid id="b0dfe" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+          <grid id="b0dfe" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="0" bottom="0" right="0"/>
             <constraints>
               <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
@@ -337,19 +316,9 @@
             </properties>
             <border type="none"/>
             <children>
-              <component id="bbc91" class="javax.swing.JLabel">
-                <constraints>
-                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="1" fill="0" indent="0" use-parent-layout="false"/>
-                </constraints>
-                <properties>
-                  <background color="-15981973"/>
-                  <font name="Source Code Pro" size="12" style="1"/>
-                  <text value="PlaylistName"/>
-                </properties>
-              </component>
               <component id="e6a0e" class="javax.swing.JLabel">
                 <constraints>
-                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
                   <background color="-15981973"/>

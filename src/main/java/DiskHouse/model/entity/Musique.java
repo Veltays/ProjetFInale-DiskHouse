@@ -1,6 +1,7 @@
 package DiskHouse.model.entity;
 
 import java.net.URL;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,8 @@ public class Musique extends Identifier {
     // Image (comme pour Playlist)
     private String coverImageURL; // URL (toExternalForm) de l'image; défaut = /PP.png
 
+    private LocalDate dateAjout;
+
     // ?-------------------------------*/
     // ? -------- Constructeur --------*/
     // ? ------------------------------*/
@@ -27,6 +30,7 @@ public class Musique extends Identifier {
 
         // image par défaut
         this.coverImageURL = resolveDefaultImage();
+        this.dateAjout = LocalDate.now();
     }
 
     /** Constructeur optionnel si tu veux forcer une cover au moment de la création. */
@@ -53,6 +57,7 @@ public class Musique extends Identifier {
     public Album getAlbum() { return album; }
     public List<Artiste> getArtistes() { return artistes; }
     public String getCoverImageURL() { return coverImageURL; }
+    public LocalDate getDateAjout() { return dateAjout; }
 
     // ?-------------------------------*/
     // ? --------    SETTERS   --------*/
@@ -78,6 +83,8 @@ public class Musique extends Identifier {
             this.coverImageURL = coverImageURL;
         }
     }
+
+    public void setDateAjout(LocalDate dateAjout) { this.dateAjout = dateAjout; }
 
     // ?-------------------------------*/
     // ? --------     UTILS    --------*/
@@ -123,11 +130,11 @@ public class Musique extends Identifier {
 
         sb.append("  Artistes: ");
         if (artistes != null && !artistes.isEmpty()) {
-            String noms = artistes.stream()
-                    .map(a -> (a != null) ? a.getNom() : "inconnu")
+            String pseudos = artistes.stream()
+                    .map(a -> (a != null) ? a.getPseudo() : "inconnu")
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
-            sb.append(noms);
+            sb.append(pseudos);
         } else {
             sb.append("aucun");
         }

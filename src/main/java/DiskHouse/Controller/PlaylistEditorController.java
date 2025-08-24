@@ -275,12 +275,9 @@ public class PlaylistEditorController {
         if (artistes == null || artistes.isEmpty()) return "";
         List<String> names = new ArrayList<>();
         for (Artiste a : artistes) {
-            String prenom = safe(a.getPrenom());
-            String nom = safe(a.getNom());
-            String full = (prenom + " " + nom).trim();
-            if (full.isEmpty()) full = safe(a.getPseudo());
-            if (full.isEmpty()) full = "Inconnu";
-            names.add(full);
+            String pseudo = safe(a.getPseudo());
+            if (pseudo.isEmpty()) pseudo = "Inconnu";
+            names.add(pseudo);
         }
         return String.join(", ", names);
     }
@@ -293,16 +290,7 @@ public class PlaylistEditorController {
             if (n.isEmpty()) continue;
             Artiste a = artisteDAO.getByName(n);
             if (a == null) {
-                // heuristique simple : si un seul token -> pseudo ; sinon prenom + nom
-                String prenom = "", nom = "";
-                String[] tokens = n.split("\\s+");
-                if (tokens.length >= 2) {
-                    prenom = tokens[0];
-                    nom = n.substring(prenom.length()).trim();
-                    a = new Artiste(nom, prenom, "", new ArrayList<>());
-                } else {
-                    a = new Artiste("", "", n, new ArrayList<>());
-                }
+                a = new Artiste(n, new ArrayList<>());
                 artisteDAO.add(a);
             }
             list.add(a);

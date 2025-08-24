@@ -6,6 +6,8 @@ import DiskHouse.model.DAO.MusicFileDAO;
 import DiskHouse.model.entity.Album;
 import DiskHouse.model.entity.Artiste;
 import DiskHouse.model.entity.Musique;
+import DiskHouse.view.AlbumEditor;
+import DiskHouse.view.ArtisteEditor;
 import DiskHouse.view.MusicEditor;
 
 import javax.swing.*;
@@ -49,7 +51,32 @@ public class MusicEditorController implements IController<MusicEditor> {
         initSubEditors();
         initValidationShortcut();
         preloadCombosFromDAO();
+        // Ajout : recharge dynamique des artistes lors de l'ouverture de la combo
+        view.getArtisteCombo().addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
+            @Override public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+                reloadArtistesCombo();
+            }
+            @Override public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {}
+            @Override public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {}
+        });
     }
+
+    // Recharge la comboBox des artistes depuis le DAO
+    private void reloadArtistesCombo() {
+        var combo = view.getArtisteCombo();
+        Object selected = combo.getSelectedItem();
+        combo.removeAllItems();
+        var artistes = artisteDAO.getAll();
+        // Suppression du dialogue de debug
+        // JOptionPane.showMessageDialog(view, "Artistes trouvés : " + artistes.size(), "Debug", JOptionPane.INFORMATION_MESSAGE);
+        for (var artiste : artistes) {
+            combo.addItem(displayName(artiste));
+        }
+        // Restaure la sélection si possible
+        if (selected != null) combo.setSelectedItem(selected);
+    }
+
+    /* ===================== UI WIRING ===================== */
 
     private void initImageChooser() {
         JLabel preview = view.getImagePreviewLabel();
@@ -61,7 +88,9 @@ public class MusicEditorController implements IController<MusicEditor> {
     }
 
     private void initSubEditors() {
+        // + Artiste
         view.getAddArtisteButton().addActionListener(e -> onOpenArtistEditor());
+        // + Album
         view.getAddAlbumButton().addActionListener(e -> onOpenAlbumEditor());
     }
 
@@ -73,13 +102,18 @@ public class MusicEditorController implements IController<MusicEditor> {
         am.put("validate-form", new AbstractAction() {
             @Override public void actionPerformed(ActionEvent e) { onValidateAndSave(); }
         });
+        // bouton enregistrer
+        view.getSaveButton().addActionListener(e -> onValidateAndSave());
+        // bouton annuler
+        view.getCancelButton().addActionListener(e -> view.dispose());
     }
 
     /* ===================== OUVERTURE ===================== */
+
     public void openForCreate(Window parent) {
         current = null;
         selectedImagePath = null;
-        view.setPreviewImage((Image) null); // éviter l'ambiguïté
+        view.setPreviewImage((String) null);
         view.getTitreField().setText("");
         view.getDureeField().setText("");
         view.getArtisteCombo().setSelectedItem(null);
@@ -95,9 +129,9 @@ public class MusicEditorController implements IController<MusicEditor> {
 
         selectedImagePath = musique.getCoverImageURL();
         if (selectedImagePath != null && !selectedImagePath.isBlank()) {
-            view.setPreviewImage(new ImageIcon(selectedImagePath).getImage());
+            view.setPreviewImage(selectedImagePath);
         } else {
-            view.setPreviewImage((Image) null);
+            view.setPreviewImage((String) null);
         }
 
         if (musique.getArtistes() != null && !musique.getArtistes().isEmpty()) {
@@ -117,12 +151,13 @@ public class MusicEditorController implements IController<MusicEditor> {
     private void show(Window parent) {
         if (view.getWidth() == 0 || view.getHeight() == 0) view.pack();
         view.setLocationRelativeTo(parent);
-        view.setVisible(true);
+        view.setVisible(true); // JDialog MODAL
         view.toFront();
         view.requestFocus();
     }
 
     /* ===================== ACTIONS ===================== */
+
     private void onChooseImage() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Choisir une image");
@@ -130,18 +165,35 @@ public class MusicEditorController implements IController<MusicEditor> {
         chooser.addChoosableFileFilter(new FileNameExtensionFilter("Images (png, jpg, jpeg)", "png", "jpg", "jpeg"));
         int result = chooser.showOpenDialog(view);
         if (result == JFileChooser.APPROVE_OPTION && chooser.getSelectedFile() != null) {
-            selectedImagePath = chooser.getSelectedFile().getAbsolutePath();
-            ImageIcon icon = new ImageIcon(selectedImagePath);
-            view.setPreviewImage(icon.getImage());
+            java.io.File file = chooser.getSelectedFile();
+            selectedImagePath = file.toURI().toString();
+            view.setPreviewImage(selectedImagePath);
         }
     }
 
+    /** Ouvre ArtisteEditor (JDialog modal), puis recharge la combo Artiste. */
     private void onOpenArtistEditor() {
-        JOptionPane.showMessageDialog(view, "Ouvre l'éditeur d'artiste (à intégrer).", "Artiste", JOptionPane.INFORMATION_MESSAGE);
+        Window owner = SwingUtilities.getWindowAncestor(view);
+        ArtisteEditor dlg = new ArtisteEditor(owner);
+        ArtisteEditorController ctrl = new ArtisteEditorController(dlg);
+        ctrl.initController();
+        ctrl.show(owner);            // modal -> bloque jusqu'à fermeture
+        preloadCombosFromDAO();      // rafraîchir artistes après fermeture
     }
 
+    /** Ouvre AlbumEditor (JDialog modal, câblé + affiché dans son constructeur), puis recharge la combo Album. */
     private void onOpenAlbumEditor() {
-        JOptionPane.showMessageDialog(view, "Ouvre l'éditeur d'album (à intégrer).", "Album", JOptionPane.INFORMATION_MESSAGE);
+        Window owner = SwingUtilities.getWindowAncestor(view);
+
+        AlbumEditor dlg = new AlbumEditor(owner);
+
+        if (dlg.getWidth() == 0 || dlg.getHeight() == 0) dlg.pack();
+        dlg.setLocationRelativeTo(owner);
+        dlg.setVisible(true);
+        dlg.dispose(); // libère les ressources
+
+        // Après fermeture, on peut rafraîchir les combos
+        preloadCombosFromDAO();
     }
 
     private void onValidateAndSave() {
@@ -257,16 +309,7 @@ public class MusicEditorController implements IController<MusicEditor> {
         if (d.isEmpty()) return null;
         Artiste a = artisteDAO.getByName(d);
         if (a != null) return a;
-
-        String prenom = "", nom = "";
-        String[] parts = d.split("\\s+");
-        if (parts.length >= 2) {
-            prenom = parts[0];
-            nom = d.substring(prenom.length()).trim();
-            a = new Artiste(nom, prenom, "", new ArrayList<>());
-        } else {
-            a = new Artiste("", "", d, new ArrayList<>());
-        }
+        a = new Artiste(d, new ArrayList<>());
         artisteDAO.add(a);
         return a;
     }
@@ -298,11 +341,7 @@ public class MusicEditorController implements IController<MusicEditor> {
     private static String displayName(Artiste a) {
         if (a == null) return "";
         String pseudo = safe(a.getPseudo());
-        if (!pseudo.isBlank()) return pseudo;
-        String prenom = safe(a.getPrenom());
-        String nom = safe(a.getNom());
-        String full = (prenom + " " + nom).trim();
-        return full.isBlank() ? "Inconnu" : full;
+        return pseudo.isBlank() ? "Inconnu" : pseudo;
     }
 
     private static String safe(String s) { return s == null ? "" : s.trim(); }
