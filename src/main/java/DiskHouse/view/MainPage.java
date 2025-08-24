@@ -1,15 +1,13 @@
 package DiskHouse.view;
 
-import DiskHouse.Controller.MainPageController;
-
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 
 public class MainPage extends JFrame {
-
-    // --- Composants générés par l'UI Designer (ne pas renommer sans MAJ du .form) ---
     private JPanel MainWindow;
-    private JTable tablePlaylist;
-    private JTable TablePlaylist;
+    private JTable tablePlaylist;                    // ← table playlists (Designer)
+    private JTable TableMusicInPlaylistSelected;     // ← table musiques de la playlist sélectionnée
     private JPanel InfoBouton;
     private JPanel Musique;
     private JPanel ListePlaylist;
@@ -28,31 +26,51 @@ public class MainPage extends JFrame {
 
     public MainPage() {
         setTitle("DiskHouse");
-        setContentPane(MainWindow);        // on garde le GridLayoutManager de l'UI Designer
+        setContentPane(MainWindow); // respect GridLayoutManager (UI Designer)
         setSize(1200, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        initController();                  // branche le contrôleur
-        setVisible(true);
+        // style visuel (pas de logique)
+        styliserBouton(AjouterMusique);
+        styliserBouton(SupprimerMusique);
+        styliserBouton(ModifierMusique);
+        styliserBouton(AjouterPlaylist);
+        styliserBouton(SupprimerPlaylist);
+        styliserBouton(ModifierPlaylist);
+
+        // ❌ NE RIEN APPELER DU CONTROLEUR ICI (MVC)
+        // Le contrôleur fera l'init des JTable, le rendu et le seed.
     }
 
-    private void initController() {
-        new MainPageController(this).initController();
+    private void styliserBouton(JButton b) {
+        if (b == null) return;
+        b.setFocusPainted(false);
+        b.setBorder(new EmptyBorder(8, 16, 8, 16));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    // --- Getters utilisés par le contrôleur (simples et suffisants) ---
-    public JButton getAjouterMusique()    { return AjouterMusique; }
-    public JButton getSupprimerMusique()  { return SupprimerMusique; }
-    public JButton getModifierMusique()   { return ModifierMusique; }
-    public JButton getAjouterPlaylist()   { return AjouterPlaylist; }
-    public JButton getSupprimerPlaylist() { return SupprimerPlaylist; }
-    public JButton getModifierPlaylist()  { return ModifierPlaylist; }
-    public JTable  getTablePlaylist()     { return (tablePlaylist != null) ? tablePlaylist : TablePlaylist; }
-    public JLabel  getPhotoPlaylist()     { return PhotoPlaylist; }
+    /* =============================
+       === Getters pour MVC ========
+       ============================= */
 
-    // --- Main de test optionnel ---
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(MainPage::new);
+    /** JTable des playlists (gérée par le Designer). */
+    public JTable getTablePlaylist() {
+        return tablePlaylist != null ? tablePlaylist : TableMusicInPlaylistSelected; // fallback ultime si renommage
     }
+
+    /** JTable des musiques de la playlist sélectionnée. */
+    public JTable getTableMusicInPlaylistSelected() {
+        return TableMusicInPlaylistSelected;
+    }
+
+    public JButton getAjouterPlaylistButton() { return AjouterPlaylist; }
+    public JButton getSupprimerPlaylistButton() { return SupprimerPlaylist; }
+    public JButton getModifierPlaylistButton() { return ModifierPlaylist; }
+
+    public JLabel getPhotoPlaylistLabel() { return PhotoPlaylist; }
+
+    public JButton getAjouterMusiqueButton() { return AjouterMusique; }
+    public JButton getSupprimerMusiqueButton() { return SupprimerMusique; }
+    public JButton getModifierMusiqueButton() { return ModifierMusique; }
 }

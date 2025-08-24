@@ -52,7 +52,10 @@ public class LoginController implements IController<Login> {
     }
 
     private void onOpenMainPage() {
-        new MainPage();
+        MainPage mainPage = new MainPage();
+        MainPageController controller = new MainPageController(mainPage);
+        controller.initController();
+        mainPage.setVisible(true);
         view.dispose();
     }
 

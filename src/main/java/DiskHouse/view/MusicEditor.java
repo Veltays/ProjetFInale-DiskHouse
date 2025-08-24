@@ -1,387 +1,384 @@
 package DiskHouse.view;
 
-import DiskHouse.Controller.MusicEditorController;
+import DiskHouse.Controller.MusicEditorController;   // <-- ajout
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
- * Vue "Ajouter une musique" (SANS contrôleurs / SANS listeners)
- * - La vue dessine et expose des getters + helpers (MVC)
- * - GridLayoutManager respecté (UI Designer)
- * - Auto‑wiring du contrôleur via wireController()
+ * MusicEditor - Vue compacte (GridLayoutManager + MVC)
+ * - Aperçu image centré (box fixe 170x170)
+ * - Champs/combos 36px + placeholders
+ * - Boutons "+" 36x36
+ * - Chargement image fiable (ImageIO) depuis URL/fichier/ressource
  */
 public class MusicEditor extends JFrame {
 
-    // Root
     private JPanel mainPanel;
+    private JLabel logoLabel;
 
-    // Header
-    private JLabel logoLabel;      // icône
-    private JLabel titleLabel;     // "DiskHouse"
-
-    // Image preview (label cliquable côté contrôleur)
     private JLabel imagePreviewLabel;
 
-    // Champs
-    private PlaceholderTextField titreField;
+    private JTextField titreField;
     private JComboBox<String> artisteCombo;
     private JButton addArtisteButton;
-
     private JComboBox<String> albumCombo;
     private JButton addAlbumButton;
+    private JTextField dureeField;
 
-    private PlaceholderTextField dureeField;
+    private JButton saveButton;
+    private JButton cancelButton;
 
-    // Constantes UI
-    private static final Dimension PREVIEW_SIZE = new Dimension(200, 200);
-    private static final Dimension FIELD_SIZE   = new Dimension(440, 56);
-    private static final Color BRAND            = new Color(0x3B5C8E);
-    private static final Color CARD_BG          = new Color(0xE6E6E6);
-    private static final Color CARD_BORDER      = new Color(0xDDDDDD);
+    private static final int PREVIEW_BOX = 170;
+
+    // --- contrôle du double-branchement du contrôleur
+    private boolean controllerWired = false;
 
     public MusicEditor() {
-        super("DiskHouse - Ajouter une musique");
-        $$$setupUI$$$();
-
+        super("DiskHouse - Music Editor");
+        $$$setupUI$$$();                // crée TOUT (y compris les boutons)
         setContentPane(mainPanel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setBackground(Color.WHITE);
 
-        // STYLE GLOBAL (strictement visuel)
-        mainPanel.setBackground(Color.WHITE);
-        mainPanel.setBorder(new EmptyBorder(24, 24, 24, 24));
+        styleUI();                      // puis on les stylise (non-null)
 
-        // --- HEADER ---
-        titleLabel.setText("DiskHouse");
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 18f));
-        titleLabel.setForeground(BRAND);
-
-        // --- IMAGE (placeholder "Ajouter image") ---
-        imagePreviewLabel.setPreferredSize(PREVIEW_SIZE);
-        imagePreviewLabel.setMinimumSize(PREVIEW_SIZE);
-        imagePreviewLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        imagePreviewLabel.setVerticalAlignment(SwingConstants.CENTER);
-        imagePreviewLabel.setOpaque(true);
-        imagePreviewLabel.setBackground(new Color(0xB3C4E1));
-        imagePreviewLabel.setForeground(new Color(255, 255, 255, 230));
-        imagePreviewLabel.setText("Ajouter image");
-        imagePreviewLabel.setBorder(new LineBorder(new Color(0x9AAAC3), 1, false));
-
-        // --- CHAMPS (purement visuel) ---
-        setupFieldLikeCard(titreField);
-        setupFieldLikeCard(dureeField);
-
-        setupComboLikeCard(artisteCombo, "Sélectionner un artiste");
-        stylePlusButton(addArtisteButton);
-
-        setupComboLikeCard(albumCombo, "Sélectionner un album");
-        stylePlusButton(addAlbumButton);
-
-        // --- Auto‑wiring du contrôleur (simple) ---
-        wireController();
-
+        mainPanel.setPreferredSize(new Dimension(760, 520));
         pack();
         setLocationRelativeTo(null);
-        setVisible(true);
+
+        // branche le contrôleur ici (comme dans PlaylistEditor)
+        wireController();
+
+        cancelButton.addActionListener(e -> dispose());
     }
 
-    /** Instancie le contrôleur et branche ses listeners. */
+    /** Instancie et initialise le contrôleur une seule fois. */
     private void wireController() {
+        if (controllerWired) return;
         new MusicEditorController(this).initController();
+        controllerWired = true;
     }
 
-    // ===== Helpers purement VISUELS (la vue reste passive) =====
+    /* ======== API contrôleurs ======== */
+    public JLabel getImagePreviewLabel()       { return imagePreviewLabel; }
+    public JButton getAddArtisteButton()       { return addArtisteButton; }
+    public JButton getAddAlbumButton()         { return addAlbumButton; }
+    public JComboBox<String> getArtisteCombo() { return artisteCombo; }
+    public JComboBox<String> getAlbumCombo()   { return albumCombo; }
+    public JTextField getTitreField()          { return titreField; }
+    public JTextField getDureeField()          { return dureeField; }
+    public JButton getSaveButton()             { return saveButton; }
+    public JButton getCancelButton()           { return cancelButton; }
 
-    /** Affiche le logo à partir d’un chemin absolu, redimensionné. */
-    public void setLogoFromAbsolutePath(String absolutePath, int targetW, int targetH) {
-        try {
-            ImageIcon icon = new ImageIcon(absolutePath);
-            if (icon.getIconWidth() > 0) {
-                Image scaled = icon.getImage().getScaledInstance(targetW, targetH, Image.SCALE_SMOOTH);
-                logoLabel.setIcon(new ImageIcon(scaled));
-                logoLabel.setText(null);
-            } else {
-                logoLabel.setText("DiskHouse");
-            }
-        } catch (Exception ex) {
-            logoLabel.setText("DiskHouse");
-        }
-    }
-
-    /** Met l’aperçu d’image (centré dans 200x200). */
-    public void setPreviewImage(Image source) {
-        if (source == null) {
+    /* ======== Image preview ======== */
+    public void setPreviewImage(Image img) {
+        if (img == null) {
             imagePreviewLabel.setIcon(null);
-            imagePreviewLabel.setText("Ajouter image");
+            imagePreviewLabel.setText("image");
             return;
         }
-        int box = PREVIEW_SIZE.width;
-        int w = source.getWidth(null), h = source.getHeight(null);
-        if (w <= 0 || h <= 0) return;
+        int w = img.getWidth(null), h = img.getHeight(null);
+        if (w <= 0 || h <= 0) {
+            imagePreviewLabel.setIcon(null);
+            imagePreviewLabel.setText("image");
+            return;
+        }
+        double s = Math.min(PREVIEW_BOX / (double) w, PREVIEW_BOX / (double) h);
+        int nw = Math.max(1, (int) Math.round(w * s));
+        int nh = Math.max(1, (int) Math.round(h * s));
+        Image scaled = img.getScaledInstance(nw, nh, Image.SCALE_SMOOTH);
 
-        double scale = Math.min(box / (double) w, box / (double) h);
-        int nw = (int) Math.round(w * scale);
-        int nh = (int) Math.round(h * scale);
-
-        Image scaled = source.getScaledInstance(nw, nh, Image.SCALE_SMOOTH);
-        BufferedImage canvas = new BufferedImage(box, box, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = canvas.createGraphics();
-        g2.setColor(new Color(0xB3C4E1));
-        g2.fillRect(0,0,box,box);
-        int x = (box - nw) / 2, y = (box - nh) / 2;
-        g2.drawImage(scaled, x, y, null);
-        g2.dispose();
+        BufferedImage canvas = new BufferedImage(PREVIEW_BOX, PREVIEW_BOX, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = canvas.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        int x = (PREVIEW_BOX - nw) / 2, y = (PREVIEW_BOX - nh) / 2;
+        g.drawImage(scaled, x, y, null);
+        g.dispose();
 
         imagePreviewLabel.setText(null);
         imagePreviewLabel.setIcon(new ImageIcon(canvas));
     }
 
-    private void setupFieldLikeCard(JTextField field) {
-        field.setPreferredSize(FIELD_SIZE);
-        field.setMinimumSize(FIELD_SIZE);
-        field.setFont(field.getFont().deriveFont(Font.PLAIN, 18f));
-        field.setBackground(CARD_BG);
-        field.setOpaque(true);
-        field.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(CARD_BORDER, 1, false),
-                new EmptyBorder(10, 16, 10, 16)
-        ));
+    public void setPreviewImage(String pathOrUrl) {
+        try {
+            BufferedImage img = loadImageBlocking(pathOrUrl);
+            setPreviewImage(img);
+        } catch (IOException e) {
+            setPreviewImage((Image) null);
+        }
     }
 
-    /** ComboBox<String> avec placeholder. */
-    private void setupComboLikeCard(JComboBox<String> combo, String placeholder) {
-        combo.setFont(combo.getFont().deriveFont(Font.PLAIN, 18f));
-        combo.setPrototypeDisplayValue("XXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-        combo.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(CARD_BORDER, 1, false),
-                new EmptyBorder(6, 12, 6, 12)
-        ));
-        combo.setBackground(Color.WHITE);
+    public void loadData(String titre, String artistesCsv, String albumName, String dureeMmSs, String coverPathOrUrl) {
+        titreField.setText(titre != null ? titre : "");
+        dureeField.setText(dureeMmSs != null ? dureeMmSs : "");
 
-        combo.setSelectedItem(null);
-        combo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                          boolean isSelected, boolean cellHasFocus) {
-                JLabel c = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value == null && index == -1) {
-                    c.setText(placeholder);
-                    c.setForeground(new Color(0,0,0,90));
-                }
-                return c;
-            }
-        });
+        artisteCombo.removeAllItems();
+        if (artistesCsv != null && !artistesCsv.isBlank()) {
+            for (String a : artistesCsv.split("\\s*,\\s*")) if (!a.isBlank()) artisteCombo.addItem(a);
+            if (artisteCombo.getItemCount() > 0) artisteCombo.setSelectedIndex(0);
+        } else artisteCombo.setSelectedItem(null);
+
+        albumCombo.removeAllItems();
+        if (albumName != null && !albumName.isBlank()) {
+            albumCombo.addItem(albumName);
+            albumCombo.setSelectedIndex(0);
+        } else albumCombo.setSelectedItem(null);
+
+        if (coverPathOrUrl != null && !coverPathOrUrl.isBlank()) setPreviewImage(coverPathOrUrl);
+        else setPreviewImage((Image) null);
     }
 
-    private void stylePlusButton(JButton b) {
+    private BufferedImage loadImageBlocking(String pathOrUrl) throws IOException {
+        if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")
+                || pathOrUrl.startsWith("jar:") || pathOrUrl.startsWith("file:")) {
+            URL url = URI.create(pathOrUrl).toURL();
+            return ImageIO.read(url);
+        }
+        if (Files.exists(Paths.get(pathOrUrl))) return ImageIO.read(new File(pathOrUrl));
+        String res = pathOrUrl.startsWith("/") ? pathOrUrl : "/" + pathOrUrl;
+        URL cp = getClass().getResource(res);
+        if (cp != null) return ImageIO.read(cp);
+        throw new IOException("Image introuvable: " + pathOrUrl);
+    }
+
+    /* ======== Style ======== */
+    private void styleUI() {
+        mainPanel.setBackground(Color.WHITE);
+        mainPanel.setBorder(new EmptyBorder(14, 14, 14, 14));
+
+        logoLabel.setText("DiskHouse");
+        logoLabel.setFont(logoLabel.getFont().deriveFont(Font.BOLD, 24f));
+        logoLabel.setForeground(new Color(0x123A6B));
+        logoLabel.setBorder(new EmptyBorder(0, 6, 6, 0));
+
+        imagePreviewLabel.setText("image");
+        imagePreviewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imagePreviewLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imagePreviewLabel.setOpaque(true);
+        imagePreviewLabel.setBackground(new Color(0xC9D7EE));
+        imagePreviewLabel.setBorder(new LineBorder(new Color(0xAFC0DB), 1, true));
+        Dimension fixed = new Dimension(PREVIEW_BOX, PREVIEW_BOX);
+        imagePreviewLabel.setPreferredSize(fixed);
+        imagePreviewLabel.setMinimumSize(fixed);
+        imagePreviewLabel.setMaximumSize(fixed);
+
+        float F = 15f;
+        int H = 36;
+        setFieldLook((PlaceholderTextField) titreField, F, H, "Titre");
+        setComboLook(artisteCombo, F, H, "Artiste");
+        setComboLook(albumCombo, F, H, "Album");
+        setFieldLook((PlaceholderTextField) dureeField, F, H, "Durée (mm:ss)");
+
+        stylePlus(addArtisteButton);
+        stylePlus(addAlbumButton);
+
+        stylePrimary(saveButton);
+        styleGhost(cancelButton);
+    }
+
+    private void setFieldLook(PlaceholderTextField tf, float fontPx, int height, String placeholder) {
+        tf.setPlaceholder(placeholder);
+        tf.setFont(tf.getFont().deriveFont(Font.BOLD, fontPx));
+        tf.setBorder(new EmptyBorder(6, 10, 6, 10));
+        tf.setBackground(new Color(0xE9EAED));
+        tf.setCaretColor(new Color(0x333333));
+        tf.setPreferredSize(new Dimension(0, height));
+        tf.setMinimumSize(new Dimension(120, height));
+    }
+
+    private void setComboLook(JComboBox<String> cb, float fontPx, int height, String placeholder) {
+        cb.setFont(cb.getFont().deriveFont(Font.PLAIN, fontPx));
+        cb.setBackground(new Color(0xE9EAED));
+        cb.setBorder(new EmptyBorder(4, 8, 4, 8));
+        cb.setPreferredSize(new Dimension(0, height));
+        cb.setMinimumSize(new Dimension(120, height));
+        cb.setRenderer(new ComboPlaceholderRenderer(placeholder));
+        cb.setSelectedItem(null);
+    }
+
+    private void stylePlus(JButton b) {
         b.setText("＋");
         b.setFocusPainted(false);
-        b.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(BRAND, 2, true),
-                new EmptyBorder(6, 12, 6, 12)
-        ));
-        b.setForeground(BRAND);
-        b.setBackground(Color.WHITE);
-        b.setContentAreaFilled(true);
-        b.setOpaque(true);
+        b.setBackground(new Color(0xECECEC));
+        b.setBorder(new LineBorder(new Color(0xD0D0D0), 2, true));
+        b.setFont(b.getFont().deriveFont(Font.BOLD, 16f));
+        b.setPreferredSize(new Dimension(36, 36));
+        b.setMinimumSize(new Dimension(36, 36));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    // ===== Getters exposés pour le contrôleur =====
-    public JLabel getImagePreviewLabel()       { return imagePreviewLabel; }
-    public PlaceholderTextField getTitreField() { return titreField; }
-    public PlaceholderTextField getDureeField() { return dureeField; }
-    public JComboBox<String> getArtisteCombo() { return artisteCombo; }
-    public JButton getAddArtisteButton()       { return addArtisteButton; }
-    public JComboBox<String> getAlbumCombo()   { return albumCombo; }
-    public JButton getAddAlbumButton()         { return addAlbumButton; }
-    public JLabel getLogoLabel()               { return logoLabel; }
+    private void stylePrimary(JButton b) {
+        b.setText("Enregistrer");
+        b.setFocusPainted(false);
+        b.setBackground(new Color(0x123A6B));
+        b.setForeground(Color.WHITE);
+        b.setBorder(new EmptyBorder(8, 14, 8, 14));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
 
-    /* ========= Layout (GridLayoutManager) ========= */
+    private void styleGhost(JButton b) {
+        b.setText("Annuler");
+        b.setFocusPainted(false);
+        b.setBackground(new Color(0xF5F7FA));
+        b.setBorder(new LineBorder(new Color(0xD0D7E2), 1, true));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
+    /* ======== Placeholders ======== */
+    private static final class PlaceholderTextField extends JTextField {
+        private String placeholder;
+        public void setPlaceholder(String text) { this.placeholder = text; repaint(); }
+        @Override protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (placeholder == null || !getText().isEmpty() || isFocusOwner()) return;
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setColor(new Color(0x9F9494));
+            g2.setFont(getFont().deriveFont(Font.BOLD));
+            Insets i = getInsets();
+            int y = (getHeight() + g2.getFontMetrics().getAscent() - g2.getFontMetrics().getDescent()) / 2;
+            g2.drawString(placeholder, i.left, y);
+            g2.dispose();
+        }
+    }
+
+    private static final class ComboPlaceholderRenderer extends BasicComboBoxRenderer {
+        private final String placeholder;
+        private final Color hint = new Color(0x9F9494);
+        ComboPlaceholderRenderer(String placeholder) { this.placeholder = placeholder; }
+        @Override
+        @SuppressWarnings({ "rawtypes", "unchecked" })
+        public Component getListCellRendererComponent(JList list, Object value, int index,
+                                                      boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (index == -1 && value == null) {
+                setText(placeholder);
+                setForeground(hint);
+                setFont(getFont().deriveFont(Font.BOLD));
+            }
+            return this;
+        }
+    }
+
+    /* ======== UI (GridLayoutManager) ======== */
     private void $$$setupUI$$$() {
         mainPanel = new JPanel();
-        mainPanel.setLayout(new GridLayoutManager(16, 3, new Insets(0, 0, 0, 0), 0, 0));
+        mainPanel.setLayout(new GridLayoutManager(15, 12, new Insets(0, 0, 0, 0), 6, 6));
 
-        // colonnes latérales (respiration)
-        mainPanel.add(new JPanel() {{ setOpaque(false); }},
-                new GridConstraints(0, 0, 16, 1,
-                        GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW,
-                        null, null, null, 0, false));
+        // colonnes latérales vides (marges)
+        mainPanel.add(space(), gc(0, 0, 15, 1, GridConstraints.FILL_BOTH));
+        mainPanel.add(space(), gc(0, 11, 15, 1, GridConstraints.FILL_BOTH));
 
-        mainPanel.add(new JPanel() {{ setOpaque(false); }},
-                new GridConstraints(0, 2, 16, 1,
-                        GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW,
-                        null, null, null, 0, false));
-
-        // HEADER (logo + titre)
-        JPanel header = new JPanel(new GridLayoutManager(1, 2, new Insets(0,0,0,0), 8, 0));
+        // header
+        JPanel header = new JPanel(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), 0, 0));
         header.setOpaque(false);
-        mainPanel.add(header, new GridConstraints(0, 1, 1, 1,
-                GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
-
         logoLabel = new JLabel();
-        header.add(logoLabel, new GridConstraints(0, 0, 1, 1,
-                GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        header.add(logoLabel, gc(0, 0, 1, 1, GridConstraints.FILL_NONE, GridConstraints.ANCHOR_WEST));
+        mainPanel.add(header, gc(0, 1, 1, 10, GridConstraints.FILL_HORIZONTAL, GridConstraints.ANCHOR_WEST));
 
-        titleLabel = new JLabel("DiskHouse");
-        header.add(titleLabel, new GridConstraints(0, 1, 1, 1,
-                GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        mainPanel.add(space(4), gc(1, 1, 1, 10, GridConstraints.FILL_BOTH));
 
-        // espace
-        mainPanel.add(space(16), new GridConstraints(1, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
-
-        // Image
-        JPanel imageRow = new JPanel(new GridLayoutManager(1,1, new Insets(0,0,0,0), 0, 0));
-        imageRow.setOpaque(false);
+        // === APERÇU IMAGE CENTRÉ PLEINE LARGEUR UTILE (COL 1→10) ===
+        JPanel previewWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        previewWrapper.setOpaque(false);
         imagePreviewLabel = new JLabel();
-        imageRow.add(imagePreviewLabel, new GridConstraints(0, 0, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                PREVIEW_SIZE, PREVIEW_SIZE, null, 0, false));
-        mainPanel.add(imageRow, new GridConstraints(2, 1, 2, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        previewWrapper.add(imagePreviewLabel);
+        mainPanel.add(
+                previewWrapper,
+                gc(2, 1, 2, 10, GridConstraints.FILL_NONE, GridConstraints.ANCHOR_CENTER)
+        );
 
-        // espace
-        mainPanel.add(space(16), new GridConstraints(4, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        mainPanel.add(space(4), gc(4, 1, 1, 10, GridConstraints.FILL_BOTH));
 
-        // Titre
-        titreField = new PlaceholderTextField("Titre");
-        mainPanel.add(titreField, new GridConstraints(5, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, FIELD_SIZE, null, 0, false));
+        JPanel rowTitle = new JPanel(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), 0, 0));
+        rowTitle.setOpaque(false);
+        titreField = new PlaceholderTextField();
+        rowTitle.add(titreField, gc(0, 0, 1, 1, GridConstraints.FILL_HORIZONTAL));
+        mainPanel.add(rowTitle, gc(5, 2, 1, 8, GridConstraints.FILL_HORIZONTAL));
 
-        // espace
-        mainPanel.add(space(12), new GridConstraints(6, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        mainPanel.add(space(2), gc(6, 2, 1, 8, GridConstraints.FILL_BOTH));
 
-        // Artiste (combo + +)
-        JPanel artisteRow = new JPanel(new GridLayoutManager(1, 5, new Insets(0,0,0,0), 8, 0));
-        artisteRow.setOpaque(false);
-        artisteCombo = new JComboBox<>(new DefaultComboBoxModel<>());
+        JPanel rowArtist = new JPanel(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), 8, 0));
+        rowArtist.setOpaque(false);
+        artisteCombo = new JComboBox<>();
+        rowArtist.add(artisteCombo, gc(0, 0, 1, 1, GridConstraints.FILL_HORIZONTAL));
         addArtisteButton = new JButton();
+        rowArtist.add(addArtisteButton, gc(0, 1, 1, 1, GridConstraints.FILL_NONE, GridConstraints.ANCHOR_EAST));
+        mainPanel.add(rowArtist, gc(7, 2, 1, 8, GridConstraints.FILL_HORIZONTAL));
 
-        artisteRow.add(artisteCombo, new com.intellij.uiDesigner.core.GridConstraints(
-                0, 0, 1, 4, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, FIELD_SIZE, null, 0, false));
+        mainPanel.add(space(2), gc(8, 2, 1, 8, GridConstraints.FILL_BOTH));
 
-        artisteRow.add(addArtisteButton, new com.intellij.uiDesigner.core.GridConstraints(
-                0, 4, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
-
-        mainPanel.add(artisteRow, new GridConstraints(7, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
-
-        // espace
-        mainPanel.add(space(12), new GridConstraints(8, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
-
-        // Album (combo + +)
-        JPanel albumRow = new JPanel(new GridLayoutManager(1, 5, new Insets(0,0,0,0), 8, 0));
-        albumRow.setOpaque(false);
-        albumCombo = new JComboBox<>(new DefaultComboBoxModel<>());
+        JPanel rowAlbum = new JPanel(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), 8, 0));
+        rowAlbum.setOpaque(false);
+        albumCombo = new JComboBox<>();
+        rowAlbum.add(albumCombo, gc(0, 0, 1, 1, GridConstraints.FILL_HORIZONTAL));
         addAlbumButton = new JButton();
+        rowAlbum.add(addAlbumButton, gc(0, 1, 1, 1, GridConstraints.FILL_NONE, GridConstraints.ANCHOR_EAST));
+        mainPanel.add(rowAlbum, gc(9, 2, 1, 8, GridConstraints.FILL_HORIZONTAL));
 
-        albumRow.add(albumCombo, new com.intellij.uiDesigner.core.GridConstraints(
-                0, 0, 1, 4, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, FIELD_SIZE, null, 0, false));
+        mainPanel.add(space(2), gc(10, 2, 1, 8, GridConstraints.FILL_BOTH));
 
-        albumRow.add(addAlbumButton, new com.intellij.uiDesigner.core.GridConstraints(
-                0, 4, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        JPanel rowDur = new JPanel(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), 0, 0));
+        rowDur.setOpaque(false);
+        dureeField = new PlaceholderTextField();
+        rowDur.add(dureeField, gc(0, 0, 1, 1, GridConstraints.FILL_HORIZONTAL));
+        mainPanel.add(rowDur, gc(11, 2, 1, 8, GridConstraints.FILL_HORIZONTAL));
 
-        mainPanel.add(albumRow, new GridConstraints(9, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        // Actions
+        JPanel actions = new JPanel(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), 8, 0));
+        actions.setOpaque(false);
+        actions.add(space(), gc(0, 0, 1, 1, GridConstraints.FILL_BOTH));
+        cancelButton = new JButton();
+        actions.add(cancelButton, gc(0, 1, 1, 1, GridConstraints.FILL_NONE, GridConstraints.ANCHOR_EAST));
+        saveButton = new JButton();
+        actions.add(saveButton, gc(0, 2, 1, 1, GridConstraints.FILL_NONE, GridConstraints.ANCHOR_EAST));
+        mainPanel.add(actions, gc(12, 1, 1, 10, GridConstraints.FILL_HORIZONTAL));
 
-        // espace
-        mainPanel.add(space(12), new GridConstraints(10, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
-
-        // Durée
-        dureeField = new PlaceholderTextField("Durée (mm:ss)");
-        mainPanel.add(dureeField, new GridConstraints(11, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
-                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                null, FIELD_SIZE, null, 0, false));
-
-        // espace bas
-        mainPanel.add(space(16), new GridConstraints(12, 1, 1, 1,
-                GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
-                null, null, null, 0, false));
+        mainPanel.add(space(4), gc(13, 1, 1, 10, GridConstraints.FILL_BOTH));
+        mainPanel.add(space(), gc(14, 1, 1, 10, GridConstraints.FILL_BOTH));
     }
 
-    private JPanel space(int h) {
-        JPanel p = new JPanel();
-        p.setOpaque(false);
-        p.setPreferredSize(new Dimension(0, h));
+    private GridConstraints gc(int r, int c, int rs, int cs, int fill) {
+        return new GridConstraints(
+                r, c, rs, cs,
+                GridConstraints.ANCHOR_CENTER, fill,
+                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
+                null, null, null, 0, false
+        );
+    }
+
+    private GridConstraints gc(int r, int c, int rs, int cs, int fill, int anchor) {
+        return new GridConstraints(
+                r, c, rs, cs,
+                anchor, fill,
+                GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED,
+                null, null, null, 0, false
+        );
+    }
+
+    private JComponent space() { return space(0); }
+    private JComponent space(int h) {
+        JPanel p = new JPanel(); p.setOpaque(false);
+        if (h > 0) p.setPreferredSize(new Dimension(0, h));
         return p;
     }
 
     public JComponent $$$getRootComponent$$$() { return mainPanel; }
 
-    /* ===================== Classes utilitaires (placeholders) ===================== */
-
-    /** TextField qui dessine un placeholder quand il est vide. */
-    public static class PlaceholderTextField extends JTextField {
-        private String hint;
-        public PlaceholderTextField(String hint) {
-            super();
-            this.hint = hint;
-            setColumns(1);
-        }
-        public void setHint(String hint) { this.hint = hint; repaint(); }
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (getText().isEmpty() && hint != null && !hint.isEmpty()) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setColor(new Color(0,0,0,90));
-                g2.setFont(getFont().deriveFont(Font.PLAIN, getFont().getSize2D()));
-                Insets ins = getInsets();
-                g2.drawString(hint, ins.left, getHeight()/2f + g2.getFontMetrics().getAscent()/2f - 4);
-                g2.dispose();
-            }
-        }
-    }
-
-    /* ===================== Main de test (optionnel) ===================== */
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(MusicEditor::new); // new AddMusic() suffit
+        SwingUtilities.invokeLater(() -> new MusicEditor().setVisible(true));
     }
 }

@@ -19,7 +19,7 @@ import java.awt.image.BufferedImage;
  * Respect GridLayoutManager (IntelliJ) + MVC
  * Auto‑liaison contrôleur via wireController()
  */
-public class ArtistEditor extends JFrame {
+public class ArtisteEditor extends JFrame {
 
     // Root
     private JPanel mainPanel;
@@ -46,7 +46,7 @@ public class ArtistEditor extends JFrame {
     private static final Dimension PORTRAIT_SIZE = new Dimension(140, 140);
     private static final Color BLUE = new Color(0x0E2A62);
 
-    public ArtistEditor() {
+    public ArtisteEditor() {
         super("DiskHouse - Artiste");
         $$$setupUI$$$();
 
@@ -297,6 +297,6 @@ public class ArtistEditor extends JFrame {
     public JComponent $$$getRootComponent$$$() { return mainPanel; }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(ArtistEditor::new);
+        SwingUtilities.invokeLater(ArtisteEditor::new);
     }
 }

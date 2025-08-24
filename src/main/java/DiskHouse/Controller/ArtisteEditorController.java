@@ -2,7 +2,7 @@ package DiskHouse.Controller;
 
 import DiskHouse.model.entity.Album;
 import DiskHouse.model.entity.Artiste;
-import DiskHouse.view.ArtistEditor;
+import DiskHouse.view.ArtisteEditor;   // ← vue renommée
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,33 +12,34 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Contrôleur de la vue ArtistEditor.
- * - Pas d'accès au modèle global ici: on reçoit l'artiste et sa liste d'albums à afficher.
- * - Ne gère QUE l'initialisation de la vue et son affichage.
+ * Contrôleur de la vue ArtisteEditor.
+ * - Reçoit un Artiste et sa liste d'albums à afficher.
+ * - Initialise la vue et l'affiche (respect MVC).
  */
-public class ArtistEditorController implements IController<ArtistEditor> {
+public class ArtisteEditorController implements IController<ArtisteEditor> {
 
-    private final ArtistEditor view;
+    private final ArtisteEditor view;
 
-    public ArtistEditorController(ArtistEditor view) {
+    // ⚠️ Le nom du constructeur doit correspondre EXACTEMENT au nom de la classe
+    public ArtisteEditorController(ArtisteEditor view) {
         this.view = view;
     }
 
     @Override
-    public ArtistEditor getView() {
+    public ArtisteEditor getView() {
         return view;
     }
 
     @Override
     public void initController() {
-        // Rien pour le moment : les listeners de boutons + / 🗑 seront branchés plus tard.
+        // Brancher ici les listeners des boutons (＋ / 🗑) si nécessaire
     }
 
     /** Charge les données dans la vue (nom + liste d'albums + portrait éventuel). */
     public void loadData(Artiste artiste, List<Album> albums, Image portraitOrNull) {
         view.setArtistName(displayName(artiste));
 
-        // Liste des albums (uniques, dans l'ordre reçu).
+        // Liste des albums (uniques, dans l'ordre reçu)
         DefaultListModel<String> model = new DefaultListModel<>();
         Set<String> uniques = new LinkedHashSet<>();
         for (Album a : albums) {
@@ -81,7 +82,7 @@ public class ArtistEditorController implements IController<ArtistEditor> {
 
     private String safe(String s) { return s == null ? "" : s; }
 
-    /** Convertit une URL (http/https/file/jar) en Image (ou null si échec). */
+    /** Convertit une URL/chemin en Image (ou null si échec). */
     public static Image tryLoadImage(String urlOrPath) {
         try {
             if (urlOrPath == null || urlOrPath.isBlank()) return null;
@@ -92,7 +93,7 @@ public class ArtistEditorController implements IController<ArtistEditor> {
         }
     }
 
-    /** Utilitaire : depuis une liste d'albums, renvoie juste les titres uniques. */
+    /** Extrait les titres uniques d'une liste d'albums. */
     public static List<String> toTitles(List<Album> albums) {
         return albums.stream()
                 .filter(a -> a != null && a.getTitreAlbum() != null)

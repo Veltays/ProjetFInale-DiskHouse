@@ -2,7 +2,7 @@ package DiskHouse.Controller;
 
 import DiskHouse.view.AlbumEditor;
 import DiskHouse.view.MusicEditor;
-import DiskHouse.view.ArtistEditor;
+import DiskHouse.view.ArtisteEditor;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -70,25 +70,41 @@ public class MusicEditorController implements IController<MusicEditor> {
     }
 
     private void onOpenArtistEditor() {
-        ArtistEditor artistView = new ArtistEditor();
-        artistView.setLogoFromAbsolutePath(LOGO_ABSOLUTE_PATH, 180, 48);
+        //dialogue test
 
-        ArtisteEditorController artistController = new ArtisteEditorController(artistView);
-        artistController.initController();
 
-        SwingUtilities.invokeLater(() -> artistView.getRootPane().requestFocusInWindow());
-        artistView.setVisible(true);
+        // Tout depuis le contrôleur (pas d’auto‑wiring dans la vue)
+        SwingUtilities.invokeLater(() -> {
+            ArtisteEditor artistView = new ArtisteEditor();             // vue simple, non visible
+            artistView.setLogoFromAbsolutePath(LOGO_ABSOLUTE_PATH, 180, 48);
+
+            ArtisteEditorController artistController = new ArtisteEditorController(artistView);
+            artistController.initController();
+
+            artistView.pack();
+            artistView.setLocationRelativeTo(view);
+            artistView.setVisible(true);
+            artistView.toFront();
+            artistView.requestFocus();
+        });
     }
 
     private void onOpenAlbumEditor() {
-        AlbumEditor albumView = new AlbumEditor();
-        albumView.setLogoFromAbsolutePath(LOGO_ABSOLUTE_PATH, 180, 48);
 
-        AlbumEditorController albumController = new AlbumEditorController(albumView);
-        albumController.initController();
 
-        SwingUtilities.invokeLater(() -> albumView.getRootPane().requestFocusInWindow());
-        albumView.setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            AlbumEditor albumView = new AlbumEditor();
+            albumView.setLogoFromAbsolutePath(LOGO_ABSOLUTE_PATH, 180, 48);
+
+            AlbumEditorController albumController = new AlbumEditorController(albumView);
+            albumController.initController();
+
+            albumView.pack();
+            albumView.setLocationRelativeTo(view);
+            albumView.setVisible(true);
+            albumView.toFront();
+            albumView.requestFocus();
+        });
     }
 
     /* ================= API pour peupler ================= */
