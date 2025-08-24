@@ -5,6 +5,7 @@ import DiskHouse.model.entity.Artiste;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.lang.reflect.Field;
 
 public class ArtisteFileDAO implements IDAO<Artiste> {
 
@@ -14,11 +15,9 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         this.file = new File(filePath);
     }
 
-    // ------------------- Create -------------------
     @Override
     public void add(Artiste artiste) {
-        try (DataOutputStream dos = new DataOutputStream(
-                new FileOutputStream(file, true))) { // append = true
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, true))) {
             dos.writeInt(artiste.getId());
             dos.writeUTF(artiste.getNom());
             dos.writeUTF(artiste.getPrenom());
@@ -28,26 +27,18 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         }
     }
 
-    // ------------------- Read -------------------
     @Override
     public Artiste getById(String id) {
-        List<Artiste> all = getAll();
-        for (Artiste a : all) {
-            if (String.valueOf(a.getId()).equals(id)) {
-                return a;
-            }
+        for (Artiste a : getAll()) {
+            if (String.valueOf(a.getId()).equals(id)) return a;
         }
         return null;
     }
 
     @Override
     public Artiste getByName(String name) {
-        List<Artiste> all = getAll();
-        for (Artiste a : all) {
-            if (a.getNom().equalsIgnoreCase(name)
-                    || a.getPseudo().equalsIgnoreCase(name)) {
-                return a;
-            }
+        for (Artiste a : getAll()) {
+            if (a.getNom().equalsIgnoreCase(name) || a.getPseudo().equalsIgnoreCase(name)) return a;
         }
         return null;
     }
@@ -57,14 +48,15 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         List<Artiste> artistes = new ArrayList<>();
         if (!file.exists()) return artistes;
 
-        try (DataInputStream dis = new DataInputStream(
-                new FileInputStream(file))) {
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
             while (dis.available() > 0) {
                 int id = dis.readInt();
                 String nom = dis.readUTF();
                 String prenom = dis.readUTF();
                 String pseudo = dis.readUTF();
-                artistes.add(new Artiste(nom, prenom, pseudo, new ArrayList<>()));
+                Artiste a = new Artiste(nom, prenom, pseudo, new ArrayList<>());
+                applyId(a, id);
+                artistes.add(a);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -72,7 +64,6 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         return artistes;
     }
 
-    // ------------------- Update -------------------
     @Override
     public void update(Artiste artiste) {
         List<Artiste> artistes = getAll();
@@ -85,7 +76,6 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         saveAll(artistes);
     }
 
-    // ------------------- Delete -------------------
     @Override
     public void delete(String id) {
         List<Artiste> artistes = getAll();
@@ -93,10 +83,8 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         saveAll(artistes);
     }
 
-    // ------------------- Utils -------------------
     private void saveAll(List<Artiste> artistes) {
-        try (DataOutputStream dos = new DataOutputStream(
-                new FileOutputStream(file, false))) { // écrase le fichier
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
             for (Artiste artiste : artistes) {
                 dos.writeInt(artiste.getId());
                 dos.writeUTF(artiste.getNom());
@@ -106,5 +94,19 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void applyId(Object o, int id) {
+        try {
+            var f = findIdField(o.getClass());
+            if (f != null) { f.setAccessible(true); f.setInt(o, id); }
+        } catch (Exception ignored) {}
+    }
+    private java.lang.reflect.Field findIdField(Class<?> c) {
+        while (c != null) {
+            try { return c.getDeclaredField("id"); }
+            catch (NoSuchFieldException e) { c = c.getSuperclass(); }
+        }
+        return null;
     }
 }

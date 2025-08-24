@@ -12,16 +12,23 @@ import java.awt.event.FocusEvent;
 import java.util.Objects;
 
 public class LoginController implements IController<Login> {
+
     private final Login view;
     private final Authenticator authenticator;
+
+    /* ===================== CONSTRUCTEUR ===================== */
 
     public LoginController(Login view) {
         this.view = Objects.requireNonNull(view);
         this.authenticator = new PropertiesAuthenticator();
     }
 
+    /* ===================== INIT CONTROLLER ===================== */
+
     @Override
-    public Login getView() { return view; }
+    public Login getView() {
+        return view;
+    }
 
     @Override
     public void initController() {
@@ -32,47 +39,51 @@ public class LoginController implements IController<Login> {
         addPlaceholder(view.getTextfieldpassword(), "Mot de passe");
     }
 
-    /* ================= Actions ================= */
+    /* ===================== ACTIONS ===================== */
 
     private void onLogin() {
-        String user = view.getTextfieldusername().getText().trim();
-        String pass = new String(view.getTextfieldpassword().getPassword());
+        String username = view.getTextfieldusername().getText().trim();
+        String password = new String(view.getTextfieldpassword().getPassword());
 
-        if (authenticator.authenticate(user, pass)) {
+        if (authenticator.authenticate(username, password)) {
             showInfo(view, "Connexion réussie !", "Succès");
-            onOpenMainPage();
+            openMainPage();
         } else {
-            showError(view, "Utilisateur/Mot de passe incorrect !", "Erreur");
+            showError(view, "Utilisateur ou mot de passe incorrect.", "Erreur");
         }
     }
 
     private void onOpenRegister() {
-        new DiskHouse.view.Register();
+        new DiskHouse.view.Register(); // ouverture de la fenêtre d'inscription
         view.dispose();
     }
 
-    private void onOpenMainPage() {
+    private void openMainPage() {
         MainPage mainPage = new MainPage();
         MainPageController controller = new MainPageController(mainPage);
         controller.initController();
+
         mainPage.setVisible(true);
         view.dispose();
     }
 
-    /* ================= Helpers ================= */
+    /* ===================== UTILS ===================== */
 
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
 
         field.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
+            @Override
+            public void focusGained(FocusEvent e) {
                 if (field.getText().equals(placeholder)) {
                     field.setText("");
                     field.setForeground(Color.BLACK);
                 }
             }
-            @Override public void focusLost(FocusEvent e) {
+
+            @Override
+            public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
                     field.setText(placeholder);
                     field.setForeground(Color.GRAY);

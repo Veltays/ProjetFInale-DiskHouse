@@ -6,6 +6,7 @@ import java.io.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.lang.reflect.Field;
 
 public class AlbumFileDAO implements IDAO<Album> {
 
@@ -15,39 +16,30 @@ public class AlbumFileDAO implements IDAO<Album> {
         this.file = new File(filePath);
     }
 
-    // ------------------- Create -------------------
     @Override
     public void add(Album album) {
-        try (DataOutputStream dos = new DataOutputStream(
-                new FileOutputStream(file, true))) { // append = true
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, true))) {
             dos.writeInt(album.getId());
             dos.writeUTF(album.getTitreAlbum());
-            dos.writeUTF(album.getDateSortie().toString()); // LocalDate -> String
+            dos.writeUTF(album.getDateSortie().toString());
             dos.writeUTF(album.getCoverImageURL());
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    // ------------------- Read -------------------
     @Override
     public Album getById(String id) {
-        List<Album> all = getAll();
-        for (Album a : all) {
-            if (String.valueOf(a.getId()).equals(id)) {
-                return a;
-            }
+        for (Album a : getAll()) {
+            if (String.valueOf(a.getId()).equals(id)) return a;
         }
         return null;
     }
 
     @Override
     public Album getByName(String name) {
-        List<Album> all = getAll();
-        for (Album a : all) {
-            if (a.getTitreAlbum().equalsIgnoreCase(name)) {
-                return a;
-            }
+        for (Album a : getAll()) {
+            if (a.getTitreAlbum().equalsIgnoreCase(name)) return a;
         }
         return null;
     }
@@ -57,14 +49,15 @@ public class AlbumFileDAO implements IDAO<Album> {
         List<Album> albums = new ArrayList<>();
         if (!file.exists()) return albums;
 
-        try (DataInputStream dis = new DataInputStream(
-                new FileInputStream(file))) {
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
             while (dis.available() > 0) {
                 int id = dis.readInt();
                 String titre = dis.readUTF();
                 LocalDate date = LocalDate.parse(dis.readUTF());
                 String cover = dis.readUTF();
-                albums.add(new Album(titre, date, new ArrayList<>(), cover));
+                Album a = new Album(titre, date, new ArrayList<>(), cover);
+                applyId(a, id);
+                albums.add(a);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -72,7 +65,6 @@ public class AlbumFileDAO implements IDAO<Album> {
         return albums;
     }
 
-    // ------------------- Update -------------------
     @Override
     public void update(Album album) {
         List<Album> albums = getAll();
@@ -85,7 +77,6 @@ public class AlbumFileDAO implements IDAO<Album> {
         saveAll(albums);
     }
 
-    // ------------------- Delete -------------------
     @Override
     public void delete(String id) {
         List<Album> albums = getAll();
@@ -93,10 +84,8 @@ public class AlbumFileDAO implements IDAO<Album> {
         saveAll(albums);
     }
 
-    // ------------------- Utils -------------------
     private void saveAll(List<Album> albums) {
-        try (DataOutputStream dos = new DataOutputStream(
-                new FileOutputStream(file, false))) { // écrase le fichier
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
             for (Album album : albums) {
                 dos.writeInt(album.getId());
                 dos.writeUTF(album.getTitreAlbum());
@@ -106,5 +95,19 @@ public class AlbumFileDAO implements IDAO<Album> {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void applyId(Object o, int id) {
+        try {
+            Field f = findIdField(o.getClass());
+            if (f != null) { f.setAccessible(true); f.setInt(o, id); }
+        } catch (Exception ignored) {}
+    }
+    private Field findIdField(Class<?> c) {
+        while (c != null) {
+            try { return c.getDeclaredField("id"); }
+            catch (NoSuchFieldException e) { c = c.getSuperclass(); }
+        }
+        return null;
     }
 }

@@ -1,5 +1,6 @@
 package DiskHouse.Controller;
 
+import DiskHouse.model.DAO.PlaylistFileDAO;
 import DiskHouse.model.entity.Playlist;
 import DiskHouse.view.PlaylistEditor;
 
@@ -16,29 +17,29 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-/**
- * Gère la JTable des playlists : modèle, renderers, sélection, CRUD.
- */
 public class MainPagePlaylistController {
 
-    private final MainPageController root; // accès vue + playlists + dialogs
+    private final MainPageController root;
     private Consumer<Playlist> onSelectionChanged;
+
+    // ===== DAO =====
+    private final PlaylistFileDAO playlistDAO = new PlaylistFileDAO("data/playlists.dat");
+
+    /* ===================== CONSTRUCTEUR ===================== */
 
     public MainPagePlaylistController(MainPageController root) {
         this.root = root;
     }
 
-    /* =================== Table Playlists : modèle + rendu =================== */
+    /* ===================== INIT TABLE ===================== */
 
     public void initPlaylistTable(JTable table) {
         String[] columns = {"ID", "Nom", "# Titres", "Image (URL)"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
             @Override public Class<?> getColumnClass(int columnIndex) {
-                return switch (columnIndex) {
-                    case 0, 2 -> Integer.class;
-                    default -> String.class;
-                };
+                if (columnIndex == 0 || columnIndex == 2) return Integer.class;
+                return String.class;
             }
         };
         table.setModel(model);
@@ -50,15 +51,23 @@ public class MainPagePlaylistController {
         table.setFillsViewportHeight(true);
 
         JTableHeader header = table.getTableHeader();
-        if (header != null) { header.setPreferredSize(new Dimension(0, 0)); header.setVisible(false); }
+        if (header != null) {
+            header.setPreferredSize(new Dimension(0, 0));
+            header.setVisible(false);
+        }
 
         TableColumnModel cm = table.getColumnModel();
-        if (cm.getColumnCount() >= 4) { hideColumn(cm.getColumn(0)); hideColumn(cm.getColumn(3)); }
+        if (cm.getColumnCount() >= 4) {
+            hideColumn(cm.getColumn(0));
+            hideColumn(cm.getColumn(3));
+        }
+
         if (cm.getColumnCount() >= 2) {
             TableColumn nameCol = cm.getColumn(1);
             nameCol.setPreferredWidth(420);
             nameCol.setCellRenderer(new PlaylistCellRenderer(table));
         }
+
         if (cm.getColumnCount() >= 3) {
             TableColumn countCol = cm.getColumn(2);
             countCol.setPreferredWidth(80);
@@ -66,7 +75,7 @@ public class MainPagePlaylistController {
             countCol.setCellRenderer(new RightHintRenderer());
         }
 
-        // Sélection -> callback vers l'orchestrateur (mise à jour table musiques)
+        // Sélection → callback orchestrateur
         table.getSelectionModel().addListSelectionListener(e -> {
             if (e.getValueIsAdjusting()) return;
             Playlist selected = getSelectedPlaylist(table);
@@ -74,20 +83,18 @@ public class MainPagePlaylistController {
         });
     }
 
-    public void loadPlaylistsInto(JTable table, List<Playlist> data, Consumer<Playlist> onSelectionChanged) {
+    public void loadPlaylistsInto(JTable table, List<Playlist> playlists, Consumer<Playlist> onSelectionChanged) {
         this.onSelectionChanged = onSelectionChanged;
 
         DefaultTableModel model = (DefaultTableModel) table.getModel();
         model.setRowCount(0);
-        for (Playlist p : data) {
-            model.addRow(new Object[]{
-                    p.getId(), p.getNomPlaylist(),
-                    p.getMusiques() != null ? p.getMusiques().size() : 0,
-                    p.getCoverImageURL()
-            });
+
+        for (Playlist p : playlists) {
+            int count = (p.getMusiques() != null) ? p.getMusiques().size() : 0;
+            model.addRow(new Object[]{p.getId(), p.getNomPlaylist(), count, p.getCoverImageURL()});
         }
 
-        // Sélectionne la première et déclenche le callback
+        // Sélectionner première ligne si dispo
         if (table.getRowCount() > 0) {
             table.setRowSelectionInterval(0, 0);
             if (onSelectionChanged != null) onSelectionChanged.accept(getSelectedPlaylist(table));
@@ -99,93 +106,134 @@ public class MainPagePlaylistController {
     private Playlist getSelectedPlaylist(JTable table) {
         int vr = table.getSelectedRow();
         if (vr < 0) return null;
+
         int mr = table.convertRowIndexToModel(vr);
         Integer id = (Integer) table.getModel().getValueAt(mr, 0);
-        for (Playlist p : root.playlists) if (Objects.equals(p.getId(), id)) return p;
+
+        for (Playlist p : root.getPlaylists()) {
+            if (Objects.equals(p.getId(), id)) return p;
+        }
         return null;
     }
 
     private void hideColumn(TableColumn column) {
-        column.setMinWidth(0); column.setMaxWidth(0); column.setPreferredWidth(0); column.setResizable(false);
+        column.setMinWidth(0);
+        column.setMaxWidth(0);
+        column.setPreferredWidth(0);
+        column.setResizable(false);
     }
 
-    /* =================== Boutons Playlists (CRUD) =================== */
+    /* ===================== ACTIONS CRUD (persistantes) ===================== */
 
     public void wireButtons() {
-        if (root.getV().getAjouterPlaylistButton() != null)
-            root.getV().getAjouterPlaylistButton().addActionListener(e -> onAddPlaylist());
-        if (root.getV().getModifierPlaylistButton() != null)
-            root.getV().getModifierPlaylistButton().addActionListener(e -> onEditPlaylist());
-        if (root.getV().getSupprimerPlaylistButton() != null)
-            root.getV().getSupprimerPlaylistButton().addActionListener(e -> onDeletePlaylist());
+        if (root.getView().getAjouterPlaylistButton() != null) {
+            root.getView().getAjouterPlaylistButton().addActionListener(e -> onAddPlaylist());
+        }
+        if (root.getView().getModifierPlaylistButton() != null) {
+            root.getView().getModifierPlaylistButton().addActionListener(e -> onEditPlaylist());
+        }
+        if (root.getView().getSupprimerPlaylistButton() != null) {
+            root.getView().getSupprimerPlaylistButton().addActionListener(e -> onDeletePlaylist());
+        }
     }
 
     private void onAddPlaylist() {
-        JTable playlistTable = root.getV().getTablePlaylist();
+        JTable playlistTable = root.getView().getTablePlaylist();
         if (playlistTable == null) return;
 
-        Window owner = root.getV().isVisible() ? root.getV() : null;
+        Window owner = root.getView().isVisible() ? root.getView() : null;
         PlaylistEditor editorView = new PlaylistEditor(owner);
-        PlaylistEditorController ctrl = new PlaylistEditorController(editorView, new PlaylistEditorController.Listener() {
-            @Override public void onPlaylistCreated(Playlist created) {
-                root.playlists.add(created);
-                loadPlaylistsInto(playlistTable, root.playlists, onSelectionChanged);
-                int last = playlistTable.getRowCount() - 1;
-                if (last >= 0) playlistTable.setRowSelectionInterval(last, last);
-            }
-            @Override public void onPlaylistUpdated(Playlist updated) { /* non utilisé en Add */ }
-        });
+
+        PlaylistEditorController ctrl = new PlaylistEditorController(
+                editorView,
+                new PlaylistEditorController.Listener() {
+                    @Override public void onPlaylistCreated(Playlist created) {
+                        // Persist
+                        playlistDAO.add(created);
+
+                        // Mémoire + UI
+                        root.getPlaylists().add(created);
+                        loadPlaylistsInto(playlistTable, root.getPlaylists(), onSelectionChanged);
+
+                        int last = playlistTable.getRowCount() - 1;
+                        if (last >= 0) playlistTable.setRowSelectionInterval(last, last);
+                    }
+                    @Override public void onPlaylistUpdated(Playlist updated) { /* not used in create */ }
+                }
+        );
         ctrl.openForCreate(owner);
     }
 
     private void onEditPlaylist() {
-        JTable playlistTable = root.getV().getTablePlaylist();
+        JTable playlistTable = root.getView().getTablePlaylist();
         if (playlistTable == null) return;
 
         Playlist selected = getSelectedPlaylist(playlistTable);
-        if (selected == null) { root.showInfo(root.getV(), "Sélectionne une playlist à modifier.", "Modifier playlist"); return; }
+        if (selected == null) {
+            root.showInfo(root.getView(), "Sélectionne une playlist à modifier.", "Modifier playlist");
+            return;
+        }
 
-        Window owner = root.getV().isVisible() ? root.getV() : null;
+        Window owner = root.getView().isVisible() ? root.getView() : null;
         PlaylistEditor editorView = new PlaylistEditor(owner);
-        PlaylistEditorController ctrl = new PlaylistEditorController(editorView, new PlaylistEditorController.Listener() {
-            @Override public void onPlaylistCreated(Playlist created) { /* non utilisé ici */ }
 
-            @Override public void onPlaylistUpdated(Playlist updated) {
-                // Recharger la table et reselectionner
-                loadPlaylistsInto(playlistTable, root.playlists, onSelectionChanged);
-                for (int r = 0; r < playlistTable.getModel().getRowCount(); r++) {
-                    Integer rid = (Integer) playlistTable.getModel().getValueAt(r, 0);
-                    if (Objects.equals(rid, updated.getId())) {
-                        int vr = playlistTable.convertRowIndexToView(r);
-                        playlistTable.setRowSelectionInterval(vr, vr);
-                        break;
+        PlaylistEditorController ctrl = new PlaylistEditorController(
+                editorView,
+                new PlaylistEditorController.Listener() {
+                    @Override public void onPlaylistCreated(Playlist created) { /* not used in edit */ }
+
+                    @Override public void onPlaylistUpdated(Playlist updated) {
+                        // Persist
+                        playlistDAO.update(updated);
+
+                        // UI refresh
+                        loadPlaylistsInto(playlistTable, root.getPlaylists(), onSelectionChanged);
+
+                        // Reselect updated row
+                        for (int r = 0; r < playlistTable.getModel().getRowCount(); r++) {
+                            Integer rid = (Integer) playlistTable.getModel().getValueAt(r, 0);
+                            if (Objects.equals(rid, updated.getId())) {
+                                int vr = playlistTable.convertRowIndexToView(r);
+                                playlistTable.setRowSelectionInterval(vr, vr);
+                                break;
+                            }
+                        }
                     }
                 }
-            }
-        });
+        );
         ctrl.openForEdit(owner, selected);
     }
 
     private void onDeletePlaylist() {
-        JTable playlistTable = root.getV().getTablePlaylist();
+        JTable playlistTable = root.getView().getTablePlaylist();
         if (playlistTable == null) return;
 
         Playlist selected = getSelectedPlaylist(playlistTable);
-        if (selected == null) { root.showInfo(root.getV(), "Sélectionne une playlist à supprimer.", "Supprimer playlist"); return; }
+        if (selected == null) {
+            root.showInfo(root.getView(), "Sélectionne une playlist à supprimer.", "Supprimer playlist");
+            return;
+        }
 
-        int ok = JOptionPane.showConfirmDialog(root.getV(),
+        int confirm = JOptionPane.showConfirmDialog(
+                root.getView(),
                 "Supprimer la playlist \"" + selected.getNomPlaylist() + "\" ?",
-                "Confirmation", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (ok != JOptionPane.OK_OPTION) return;
+                "Confirmation",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.OK_OPTION) return;
 
-        root.playlists.remove(selected);
-        loadPlaylistsInto(playlistTable, root.playlists, onSelectionChanged);
+        // Persist
+        playlistDAO.delete(String.valueOf(selected.getId()));
 
-        // Effacer la table musiques via callback
+        // Mémoire + UI
+        root.getPlaylists().remove(selected);
+        loadPlaylistsInto(playlistTable, root.getPlaylists(), onSelectionChanged);
+
         if (onSelectionChanged != null) onSelectionChanged.accept(getSelectedPlaylist(playlistTable));
     }
 
-    /* ===================== Renderers (Playlists) ===================== */
+    /* ===================== RENDERERS ===================== */
 
     static class PlaylistCellRenderer extends JPanel implements javax.swing.table.TableCellRenderer {
         private final JLabel cover = new JLabel();
@@ -193,10 +241,14 @@ public class MainPagePlaylistController {
         private final Image defaultImg;
 
         PlaylistCellRenderer(JTable table) {
-            setLayout(new BorderLayout(12, 0)); setOpaque(true);
+            setLayout(new BorderLayout(12, 0));
+            setOpaque(true);
+
             cover.setOpaque(false);
             title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
-            add(cover, BorderLayout.WEST); add(title, BorderLayout.CENTER);
+
+            add(cover, BorderLayout.WEST);
+            add(title, BorderLayout.CENTER);
             setBorder(new EmptyBorder(8, 12, 8, 12));
 
             Image d = null;
@@ -211,11 +263,11 @@ public class MainPagePlaylistController {
         public Component getTableCellRendererComponent(JTable table, Object value,
                                                        boolean isSelected, boolean hasFocus,
                                                        int row, int column) {
-            String name = value == null ? "" : value.toString();
+            String name = (value == null) ? "" : value.toString();
             String url = null;
             try {
                 int modelRow = table.convertRowIndexToModel(row);
-                url = String.valueOf(table.getModel().getValueAt(modelRow, 3)); // col Image (URL)
+                url = String.valueOf(table.getModel().getValueAt(modelRow, 3));
             } catch (Exception ignored) {}
 
             cover.setIcon(loadScaledIcon(url, 72, 72, defaultImg));
@@ -227,20 +279,22 @@ public class MainPagePlaylistController {
 
     static class RightHintRenderer extends JLabel implements javax.swing.table.TableCellRenderer {
         RightHintRenderer() {
-            setOpaque(true); setHorizontalAlignment(SwingConstants.RIGHT);
-            setBorder(new EmptyBorder(0, 0, 0, 16)); setForeground(new Color(90, 90, 90));
+            setOpaque(true);
+            setHorizontalAlignment(SwingConstants.RIGHT);
+            setBorder(new EmptyBorder(0, 0, 0, 16));
+            setForeground(new Color(90, 90, 90));
         }
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                                                        boolean isSelected, boolean hasFocus,
                                                        int row, int column) {
-            setText(value == null ? "" : value.toString());
+            setText((value == null) ? "" : value.toString());
             setBackground(isSelected ? new Color(232, 239, 255) : Color.WHITE);
             return this;
         }
     }
 
-    /* ===== Utils images ===== */
+    /* ===================== UTILS ===================== */
 
     static ImageIcon loadScaledIcon(String urlOrPath, int w, int h, Image fallback) {
         Image img = null;
@@ -253,8 +307,10 @@ public class MainPagePlaylistController {
                 }
             }
         } catch (Exception ignored) {}
+
         if (img == null) img = fallback;
         if (img == null) return null;
+
         Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
         return new ImageIcon(scaled);
     }

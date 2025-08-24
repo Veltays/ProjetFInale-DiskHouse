@@ -1,5 +1,9 @@
 package DiskHouse.Controller;
 
+import DiskHouse.model.DAO.AlbumFileDAO;
+import DiskHouse.model.DAO.ArtisteFileDAO;
+import DiskHouse.model.DAO.MusicFileDAO;
+import DiskHouse.model.DAO.PlaylistFileDAO;
 import DiskHouse.model.entity.Album;
 import DiskHouse.model.entity.Artiste;
 import DiskHouse.model.entity.Musique;
@@ -18,32 +22,31 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.net.URL;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Gère la JTable des musiques : modèle, renderers, CRUD, double-clic pour ArtisteEditor.
- */
 public class MainPageMusiqueController {
 
-    final MainPageController root;
+    private final MainPageController root;
+
+    // ===== DAO =====
+    private final PlaylistFileDAO playlistDAO = new PlaylistFileDAO("data/playlists.dat");
+    private final MusicFileDAO    musicDAO    = new MusicFileDAO("data/musiques.dat");
+    private final ArtisteFileDAO  artisteDAO  = new ArtisteFileDAO("data/artistes.dat");
+    private final AlbumFileDAO    albumDAO    = new AlbumFileDAO("data/albums.dat");
+
+    /* ===================== CONSTRUCTEUR ===================== */
 
     public MainPageMusiqueController(MainPageController root) {
         this.root = root;
     }
 
-    /* =================== Table Musiques : modèle + rendu =================== */
+    /* ===================== INIT TABLE ===================== */
 
-    /**
-     * Colonnes :
-     * [0] ID (cachée)
-     * [1] CoverURL (cachée)
-     * [2] Cellule principale (cover + 2 lignes)
-     * [3] Durée (droite)
-     */
     public void initMusicTable(JTable table) {
-        String[] columns = { "ID", "CoverURL", "Titre / Artistes / Album", "Durée" };
+        String[] columns = {"ID", "CoverURL", "Titre / Artistes / Album", "Durée"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
             @Override public Class<?> getColumnClass(int columnIndex) { return String.class; }
@@ -57,22 +60,23 @@ public class MainPageMusiqueController {
         table.setFillsViewportHeight(true);
 
         JTableHeader header = table.getTableHeader();
-        if (header != null) { header.setPreferredSize(new Dimension(0, 0)); header.setVisible(false); }
+        if (header != null) {
+            header.setPreferredSize(new Dimension(0, 0));
+            header.setVisible(false);
+        }
 
         TableColumnModel cm = table.getColumnModel();
         hideColumn(cm.getColumn(0)); // ID
         hideColumn(cm.getColumn(1)); // CoverURL
 
-        TableColumn mainCol = cm.getColumn(2);
-        mainCol.setPreferredWidth(600);
-        mainCol.setCellRenderer(new MusicCellRenderer(table));
+        cm.getColumn(2).setPreferredWidth(600);
+        cm.getColumn(2).setCellRenderer(new MusicCellRenderer(table));
 
-        TableColumn durCol = cm.getColumn(3);
-        durCol.setPreferredWidth(80);
-        durCol.setMaxWidth(100);
-        durCol.setCellRenderer(new MainPagePlaylistController.RightHintRenderer());
+        cm.getColumn(3).setPreferredWidth(80);
+        cm.getColumn(3).setMaxWidth(100);
+        cm.getColumn(3).setCellRenderer(new MainPagePlaylistController.RightHintRenderer());
 
-        // Double‑clic gauche => ouvrir ArtisteEditor (avec données)
+        // Double clic -> ouvrir ArtisteEditor
         table.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
@@ -83,251 +87,438 @@ public class MainPageMusiqueController {
     }
 
     private void hideColumn(TableColumn column) {
-        column.setMinWidth(0); column.setMaxWidth(0); column.setPreferredWidth(0); column.setResizable(false);
+        column.setMinWidth(0);
+        column.setMaxWidth(0);
+        column.setPreferredWidth(0);
+        column.setResizable(false);
     }
 
-    public void clearMusicTable(JTable musicTable) { ((DefaultTableModel) musicTable.getModel()).setRowCount(0); }
+    public void clearMusicTable(JTable table) {
+        ((DefaultTableModel) table.getModel()).setRowCount(0);
+    }
 
-    public void loadMusicsForPlaylist(JTable musicTable, Playlist playlist) {
-        DefaultTableModel model = (DefaultTableModel) musicTable.getModel();
+    public void loadMusicsForPlaylist(JTable table, Playlist playlist) {
+        DefaultTableModel model = (DefaultTableModel) table.getModel();
         model.setRowCount(0);
 
         if (playlist == null) return;
-        String defaultCoverFromPlaylist = playlist.getCoverImageURL();
+
+        String defaultCover = playlist.getCoverImageURL();
 
         for (Musique m : playlist.getMusiques()) {
             String title = m.getTitre();
             String artists = joinArtists(m.getArtistes());
             String album = (m.getAlbum() != null) ? m.getAlbum().getTitreAlbum() : "";
-            String subtitle = (artists.isBlank() ? "" : artists) + (album.isBlank() ? "" : " • " + album);
+
+            String subtitle = "";
+            if (!artists.isBlank()) subtitle += artists;
+            if (!album.isBlank()) subtitle += (subtitle.isBlank() ? "" : " • ") + album;
+
             String duration = formatDuration(m.getDuree());
 
-            String coverURL = (m.getCoverImageURL() != null && !m.getCoverImageURL().isBlank())
+            String cover = (m.getCoverImageURL() != null && !m.getCoverImageURL().isBlank())
                     ? m.getCoverImageURL()
-                    : defaultCoverFromPlaylist;
+                    : defaultCover;
 
-            model.addRow(new Object[]{
-                    m.getId(),                 // [0] ID cachée
-                    coverURL,                  // [1] cachée
-                    title + "\n" + subtitle,   // [2] principale
-                    duration                   // [3] durée
-            });
+            model.addRow(new Object[]{m.getId(), cover, title + "\n" + subtitle, duration});
         }
     }
 
-    /* =================== Boutons Musiques (CRUD + Editors) =================== */
+    /* ===================== BOUTONS CRUD (persistants) ===================== */
 
     public void wireButtons() {
-        if (root.getV().getAjouterMusiqueButton() != null)
-            root.getV().getAjouterMusiqueButton().addActionListener(e -> onOpenMusicEditorAdd());
-        if (root.getV().getModifierMusiqueButton() != null)
-            root.getV().getModifierMusiqueButton().addActionListener(e -> onOpenMusicEditorEdit());
-        if (root.getV().getSupprimerMusiqueButton() != null)
-            root.getV().getSupprimerMusiqueButton().addActionListener(e -> onDeleteMusic());
+        if (root.getView().getAjouterMusiqueButton() != null) {
+            root.getView().getAjouterMusiqueButton().addActionListener(e -> onAddMusicPersisted());
+        }
+        if (root.getView().getModifierMusiqueButton() != null) {
+            root.getView().getModifierMusiqueButton().addActionListener(e -> onEditMusicPersisted());
+        }
+        if (root.getView().getSupprimerMusiqueButton() != null) {
+            root.getView().getSupprimerMusiqueButton().addActionListener(e -> onDeleteMusicPersisted());
+        }
     }
 
-    private void onOpenMusicEditorAdd() {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                MusicEditor dlg = new MusicEditor(root.getV());
-                dlg.setVisible(true);
-            } catch (Throwable ex) {
-                root.showError(root.getV(), "Impossible d'ouvrir AddMusic\n" + ex.getMessage(), "Erreur");
-            }
-        });
-    }
-
-    private void onOpenMusicEditorEdit() {
-        JTable playlistTable = root.getV().getTablePlaylist();
-        JTable musicTable    = root.getV().getTableMusicInPlaylistSelected();
+    /* ======= Ajouter ======= */
+    private void onAddMusicPersisted() {
+        JTable playlistTable = root.getView().getTablePlaylist();
+        JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
         if (playlistTable == null || musicTable == null) return;
 
-        Playlist p = getSelectedPlaylist(playlistTable);
-        if (p == null) { root.showInfo(root.getV(), "Sélectionne d'abord une playlist.", "Modifier musique"); return; }
+        Playlist playlist = getSelectedPlaylist(playlistTable);
+        if (playlist == null) {
+            root.showInfo(root.getView(), "Sélectionne d'abord une playlist.", "Ajouter musique");
+            return;
+        }
 
-        int selMU = musicTable.getSelectedRow();
-        if (selMU < 0) { root.showInfo(root.getV(), "Sélectionne une musique à modifier.", "Modifier musique"); return; }
+        // -- Dialogue léger (fonctionne tout de suite). Remplaçable par MusicEditor si tu exposes des getters/OK. --
+        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 6));
+        JTextField fTitle   = new JTextField();
+        JTextField fArtists = new JTextField(); // "Prenom Nom, Prenom2 Nom2"
+        JTextField fAlbum   = new JTextField();
+        JTextField fDuration= new JTextField(); // "mm:ss"
+        JTextField fCover   = new JTextField();
 
-        int modelMU = musicTable.convertRowIndexToModel(selMU);
-        Integer musicId = (Integer) musicTable.getModel().getValueAt(modelMU, 0); // col 0 = ID
-        Musique m = findMusicById(p, musicId);
-        if (m == null) { root.showError(root.getV(), "Musique introuvable.", "Erreur"); return; }
+        panel.add(new JLabel("Titre :"));     panel.add(fTitle);
+        panel.add(new JLabel("Artistes :"));  panel.add(fArtists);
+        panel.add(new JLabel("Album :"));     panel.add(fAlbum);
+        panel.add(new JLabel("Durée (mm:ss) :")); panel.add(fDuration);
+        panel.add(new JLabel("Cover URL (opt) :")); panel.add(fCover);
 
-        String title = m.getTitre();
-        String artists = joinArtists(m.getArtistes());
-        String album = (m.getAlbum() != null) ? m.getAlbum().getTitreAlbum() : "";
-        String duration = formatDuration(m.getDuree());
-        String cover = (m.getCoverImageURL() != null) ? m.getCoverImageURL()
-                : (p.getCoverImageURL() != null ? p.getCoverImageURL() : "");
+        int res = JOptionPane.showConfirmDialog(root.getView(), panel, "Ajouter une musique",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (res != JOptionPane.OK_OPTION) return;
 
-        SwingUtilities.invokeLater(() -> {
-            try {
-                MusicEditor dlg = new MusicEditor(root.getV());
-                dlg.loadData(title, artists, album, duration, cover);
-                dlg.setVisible(true);
-            } catch (Throwable ex) {
-                root.showError(root.getV(), "Impossible d'ouvrir l'éditeur\n" + ex.getMessage(), "Erreur");
+        String title = safe(fTitle.getText());
+        String artistsCsv = safe(fArtists.getText());
+        String albumName = safe(fAlbum.getText());
+        String mmss = safe(fDuration.getText());
+        String cover = safe(fCover.getText());
+
+        if (title.isEmpty() || !mmss.matches("^\\d{1,2}:[0-5]\\d$")) {
+            root.showError(root.getView(), "Titre requis et durée au format mm:ss.", "Erreur");
+            return;
+        }
+
+        // Trouver/créer album
+        Album album = null;
+        if (!albumName.isEmpty()) {
+            album = albumDAO.getByName(albumName);
+            if (album == null) {
+                album = new Album(albumName, LocalDate.now(), new ArrayList<>(), null);
+                albumDAO.add(album);
             }
-        });
+        }
+
+        // Trouver/créer artistes
+        List<Artiste> artistes = new ArrayList<>();
+        if (!artistsCsv.isEmpty()) {
+            for (String part : artistsCsv.split(",")) {
+                String name = safe(part);
+                if (name.isEmpty()) continue;
+                Artiste a = findOrCreateArtistByDisplayName(name);
+                artistes.add(a);
+            }
+        }
+
+        // Créer + persister musique
+        float minutes = mmSsToFloatMinutes(mmss);
+        Musique m = new Musique(title, minutes, album, artistes, cover.isEmpty()? null : cover);
+        musicDAO.add(m);
+
+        // Lier à la playlist + persister playlist
+        playlist.ajouterMusique(m);
+        playlistDAO.update(playlist);
+
+        // Rafraîchir la table de droite
+        loadMusicsForPlaylist(musicTable, playlist);
     }
 
-    private void onDeleteMusic() {
-        JTable playlistTable = root.getV().getTablePlaylist();
-        JTable musicTable    = root.getV().getTableMusicInPlaylistSelected();
+    /* ======= Modifier ======= */
+    private void onEditMusicPersisted() {
+        JTable playlistTable = root.getView().getTablePlaylist();
+        JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
         if (playlistTable == null || musicTable == null) return;
 
-        Playlist p = getSelectedPlaylist(playlistTable);
-        if (p == null) { root.showInfo(root.getV(), "Sélectionne une playlist.", "Supprimer musique"); return; }
+        Playlist playlist = getSelectedPlaylist(playlistTable);
+        if (playlist == null) {
+            root.showInfo(root.getView(), "Sélectionne d'abord une playlist.", "Modifier musique");
+            return;
+        }
 
-        int selMU = musicTable.getSelectedRow();
-        if (selMU < 0) { root.showInfo(root.getV(), "Sélectionne une musique à supprimer.", "Supprimer musique"); return; }
+        int sel = musicTable.getSelectedRow();
+        if (sel < 0) {
+            root.showInfo(root.getView(), "Sélectionne une musique.", "Modifier musique");
+            return;
+        }
 
-        int modelMU = musicTable.convertRowIndexToModel(selMU);
-        Integer musicId = (Integer) musicTable.getModel().getValueAt(modelMU, 0);
-        Musique m = findMusicById(p, musicId);
-        if (m == null) { root.showError(root.getV(), "Musique introuvable.", "Erreur"); return; }
+        int modelRow = musicTable.convertRowIndexToModel(sel);
+        Integer musicId = (Integer) musicTable.getModel().getValueAt(modelRow, 0);
+        Musique music = findMusicById(playlist, musicId);
+        if (music == null) {
+            root.showError(root.getView(), "Musique introuvable.", "Erreur");
+            return;
+        }
+
+        // Préremplir
+        String title0 = music.getTitre();
+        String artists0 = joinArtists(music.getArtistes());
+        String album0 = (music.getAlbum() != null) ? music.getAlbum().getTitreAlbum() : "";
+        String mmss0 = formatDuration(music.getDuree());
+        String cover0 = (music.getCoverImageURL() != null) ? music.getCoverImageURL() : "";
+
+        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 6));
+        JTextField fTitle   = new JTextField(title0);
+        JTextField fArtists = new JTextField(artists0);
+        JTextField fAlbum   = new JTextField(album0);
+        JTextField fDuration= new JTextField(mmss0);
+        JTextField fCover   = new JTextField(cover0);
+
+        panel.add(new JLabel("Titre :"));     panel.add(fTitle);
+        panel.add(new JLabel("Artistes :"));  panel.add(fArtists);
+        panel.add(new JLabel("Album :"));     panel.add(fAlbum);
+        panel.add(new JLabel("Durée (mm:ss) :")); panel.add(fDuration);
+        panel.add(new JLabel("Cover URL (opt) :")); panel.add(fCover);
+
+        int res = JOptionPane.showConfirmDialog(root.getView(), panel, "Modifier la musique",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (res != JOptionPane.OK_OPTION) return;
+
+        String title = safe(fTitle.getText());
+        String artistsCsv = safe(fArtists.getText());
+        String albumName = safe(fAlbum.getText());
+        String mmss = safe(fDuration.getText());
+        String cover = safe(fCover.getText());
+
+        if (title.isEmpty() || !mmss.matches("^\\d{1,2}:[0-5]\\d$")) {
+            root.showError(root.getView(), "Titre requis et durée au format mm:ss.", "Erreur");
+            return;
+        }
+
+        // Album
+        Album album = null;
+        if (!albumName.isEmpty()) {
+            album = albumDAO.getByName(albumName);
+            if (album == null) {
+                album = new Album(albumName, LocalDate.now(), new ArrayList<>(), null);
+                albumDAO.add(album);
+            }
+        }
+
+        // Artistes
+        List<Artiste> artistes = new ArrayList<>();
+        if (!artistsCsv.isEmpty()) {
+            for (String part : artistsCsv.split(",")) {
+                String name = safe(part);
+                if (name.isEmpty()) continue;
+                Artiste a = findOrCreateArtistByDisplayName(name);
+                artistes.add(a);
+            }
+        }
+
+        // Mettre à jour l'objet en mémoire
+        music.setTitre(title);
+        music.setCoverImageURL(cover.isEmpty() ? null : cover);
+        music.setAlbum(album);
+        trySetArtists(music, artistes);
+        trySetDuration(music, mmSsToFloatMinutes(mmss));
+
+        // Persister la musique et la playlist
+        musicDAO.update(music);
+        playlistDAO.update(playlist);
+
+        // Refresh UI
+        loadMusicsForPlaylist(musicTable, playlist);
+        musicTable.setRowSelectionInterval(modelRow, modelRow);
+    }
+
+    /* ======= Supprimer ======= */
+    private void onDeleteMusicPersisted() {
+        JTable playlistTable = root.getView().getTablePlaylist();
+        JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
+        if (playlistTable == null || musicTable == null) return;
+
+        Playlist playlist = getSelectedPlaylist(playlistTable);
+        if (playlist == null) {
+            root.showInfo(root.getView(), "Sélectionne une playlist.", "Supprimer musique");
+            return;
+        }
+
+        int sel = musicTable.getSelectedRow();
+        if (sel < 0) {
+            root.showInfo(root.getView(), "Sélectionne une musique.", "Supprimer musique");
+            return;
+        }
+
+        int modelRow = musicTable.convertRowIndexToModel(sel);
+        Integer musicId = (Integer) musicTable.getModel().getValueAt(modelRow, 0);
+        Musique music = findMusicById(playlist, musicId);
+        if (music == null) {
+            root.showError(root.getView(), "Musique introuvable.", "Erreur");
+            return;
+        }
 
         int confirm = JOptionPane.showConfirmDialog(
-                root.getV(),
-                "Supprimer la musique « " + m.getTitre() + " » ?",
+                root.getView(),
+                "Supprimer la musique « " + music.getTitre() + " » ?",
                 "Confirmation",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
         );
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        // remove data in playlist
-        p.getMusiques().removeIf(mu -> Objects.equals(mu.getId(), m.getId()));
-        // update UI
-        ((DefaultTableModel) musicTable.getModel()).removeRow(modelMU);
-        JTable playlistJTable = root.getV().getTablePlaylist();
-        if (playlistJTable != null) {
-            int vr = playlistJTable.getSelectedRow();
-            if (vr >= 0) {
-                int mr = playlistJTable.convertRowIndexToModel(vr);
-                ((DefaultTableModel) playlistJTable.getModel()).setValueAt(p.getMusiques().size(), mr, 2);
-            }
-        }
+        // Supprimer côté DAO + côté playlist + UI
+        musicDAO.delete(String.valueOf(music.getId()));
+        playlist.getMusiques().removeIf(m -> Objects.equals(m.getId(), music.getId()));
+        playlistDAO.update(playlist);
+
+        ((DefaultTableModel) musicTable.getModel()).removeRow(modelRow);
     }
 
-    /* =================== Double‑clic : ouvrir ArtisteEditor (avec données) =================== */
+    /* ===================== DOUBLE CLIC : ARTISTE ===================== */
 
     private void onOpenArtisteEditorForSelectedMusic() {
-        JTable playlistTable = root.getV().getTablePlaylist();
-        JTable musicTable    = root.getV().getTableMusicInPlaylistSelected();
+        JTable playlistTable = root.getView().getTablePlaylist();
+        JTable musicTable = root.getView().getTableMusicInPlaylistSelected();
         if (playlistTable == null || musicTable == null) return;
 
-        Playlist p = getSelectedPlaylist(playlistTable);
-        if (p == null) { root.showInfo(root.getV(), "Sélectionne d'abord une playlist.", "Artiste"); return; }
+        Playlist playlist = getSelectedPlaylist(playlistTable);
+        if (playlist == null) {
+            root.showInfo(root.getView(), "Sélectionne d'abord une playlist.", "Artiste");
+            return;
+        }
 
-        int selMU = musicTable.getSelectedRow();
-        if (selMU < 0) { root.showInfo(root.getV(), "Double‑clique une musique.", "Artiste"); return; }
+        int sel = musicTable.getSelectedRow();
+        if (sel < 0) {
+            root.showInfo(root.getView(), "Double-clique une musique.", "Artiste");
+            return;
+        }
 
-        int modelMU = musicTable.convertRowIndexToModel(selMU);
-        Integer musicId = (Integer) musicTable.getModel().getValueAt(modelMU, 0);
-        Musique m = findMusicById(p, musicId);
-        if (m == null) { root.showError(root.getV(), "Musique introuvable.", "Erreur"); return; }
+        int modelRow = musicTable.convertRowIndexToModel(sel);
+        Integer musicId = (Integer) musicTable.getModel().getValueAt(modelRow, 0);
+        Musique music = findMusicById(playlist, musicId);
+        if (music == null) {
+            root.showError(root.getView(), "Musique introuvable.", "Erreur");
+            return;
+        }
 
-        // === Données à injecter ===
-        Artiste artiste = firstArtistOf(m);
-        if (artiste == null) { root.showInfo(root.getV(), "Aucun artiste associé à cette musique.", "Artiste"); return; }
+        Artiste artist = firstArtistOf(music);
+        if (artist == null) {
+            root.showInfo(root.getView(), "Aucun artiste associé.", "Artiste");
+            return;
+        }
 
-        List<Album> albumsDeCetArtiste = collectAlbumsOfArtist(artiste);
+        List<Album> albums = collectAlbumsOfArtist(artist);
 
-        // Portrait : cover musique, sinon cover playlist (optionnel)
-        String portraitUrl =
-                (m.getCoverImageURL() != null && !m.getCoverImageURL().isBlank()) ? m.getCoverImageURL()
-                        : (p.getCoverImageURL() != null && !p.getCoverImageURL().isBlank()) ? p.getCoverImageURL()
-                        : null;
+        String portraitUrl = (music.getCoverImageURL() != null && !music.getCoverImageURL().isBlank())
+                ? music.getCoverImageURL()
+                : (playlist.getCoverImageURL() != null ? playlist.getCoverImageURL() : null);
+
         Image portrait = ArtisteEditorController.tryLoadImage(portraitUrl);
 
-        // === Ouvrir le dialog MVC ===
         SwingUtilities.invokeLater(() -> {
-            try {
-                ArtisteEditor view = new ArtisteEditor(root.getV());
-                ArtisteEditorController ctrl = new ArtisteEditorController(view);
-                ctrl.initController();
-                ctrl.loadData(artiste, albumsDeCetArtiste, portrait);
-                ctrl.show(root.getV());
-            } catch (Throwable ex) {
-                root.showError(root.getV(), "Impossible d'ouvrir ArtisteEditor\n" + ex.getMessage(), "Erreur");
-            }
+            ArtisteEditor dlg = new ArtisteEditor(root.getView());
+            ArtisteEditorController ctrl = new ArtisteEditorController(dlg);
+            ctrl.initController();
+            ctrl.loadData(artist, albums, portrait);
+            ctrl.show(root.getView());
         });
     }
 
-    /* =================== Helpers données =================== */
+    /* ===================== HELPERS ===================== */
 
-    private Playlist getSelectedPlaylist(JTable playlistTable) {
-        int sel = playlistTable.getSelectedRow();
+    private Playlist getSelectedPlaylist(JTable table) {
+        int sel = table.getSelectedRow();
         if (sel < 0) return null;
-        int mr = playlistTable.convertRowIndexToModel(sel);
-        Integer id = (Integer) playlistTable.getModel().getValueAt(mr, 0);
-        for (Playlist p : root.playlists) if (Objects.equals(p.getId(), id)) return p;
+        int mr = table.convertRowIndexToModel(sel);
+        Integer id = (Integer) table.getModel().getValueAt(mr, 0);
+
+        for (Playlist p : root.getPlaylists()) {
+            if (Objects.equals(p.getId(), id)) return p;
+        }
         return null;
     }
 
-    private Musique findMusicById(Playlist p, Integer musicId) {
-        if (p == null || musicId == null) return null;
-        for (Musique m : p.getMusiques()) if (Objects.equals(m.getId(), musicId)) return m;
+    private Musique findMusicById(Playlist p, Integer id) {
+        if (p == null || id == null) return null;
+        for (Musique m : p.getMusiques()) {
+            if (Objects.equals(m.getId(), id)) return m;
+        }
         return null;
     }
 
     private Artiste firstArtistOf(Musique m) {
-        List<Artiste> as = m.getArtistes();
-        if (as == null || as.isEmpty()) return null;
-        return as.get(0);
+        if (m.getArtistes() == null || m.getArtistes().isEmpty()) return null;
+        return m.getArtistes().get(0);
     }
 
-    private List<Album> collectAlbumsOfArtist(Artiste target) {
-        List<Album> list = new ArrayList<>();
-        java.util.Set<String> seenTitles = new java.util.HashSet<>();
-        for (Playlist pl : root.playlists) {
-            for (Musique mu : pl.getMusiques()) {
+    private List<Album> collectAlbumsOfArtist(Artiste artist) {
+        List<Album> albums = new ArrayList<>();
+        for (Playlist p : root.getPlaylists()) {
+            for (Musique mu : p.getMusiques()) {
                 if (mu.getArtistes() == null) continue;
-                boolean hasArtist = mu.getArtistes().stream().anyMatch(a -> sameArtist(a, target));
-                if (hasArtist && mu.getAlbum() != null) {
-                    String title = mu.getAlbum().getTitreAlbum();
-                    if (title == null || seenTitles.add(title)) list.add(mu.getAlbum());
+                for (Artiste a : mu.getArtistes()) {
+                    if (sameArtist(a, artist) && mu.getAlbum() != null) {
+                        albums.add(mu.getAlbum());
+                    }
                 }
             }
         }
-        return list;
+        return albums;
     }
 
     private boolean sameArtist(Artiste a, Artiste b) {
         if (a == b) return true;
         if (a == null || b == null) return false;
-        String ak = (safe(a.getPrenom()) + "|" + safe(a.getNom()) + "|" + safe(getPseudo(a))).toLowerCase();
-        String bk = (safe(b.getPrenom()) + "|" + safe(b.getNom()) + "|" + safe(getPseudo(b))).toLowerCase();
+        String ak = (safe(a.getPrenom()) + "|" + safe(a.getNom()) + "|" + safe(a.getPseudo())).toLowerCase();
+        String bk = (safe(b.getPrenom()) + "|" + safe(b.getNom()) + "|" + safe(b.getPseudo())).toLowerCase();
         return ak.equals(bk);
     }
-    private String getPseudo(Artiste a) { try { return a.getPseudo(); } catch (Throwable ignored) { return ""; } }
 
     private String joinArtists(List<Artiste> artistes) {
         if (artistes == null || artistes.isEmpty()) return "";
         List<String> names = new ArrayList<>();
         for (Artiste a : artistes) {
-            if (a == null) continue;
             String prenom = safe(a.getPrenom());
-            String nom    = safe(a.getNom());
-            String full   = (prenom + " " + nom).trim();
+            String nom = safe(a.getNom());
+            String full = (prenom + " " + nom).trim();
+            if (full.isBlank()) full = safe(a.getPseudo());
             if (full.isBlank()) full = "Inconnu";
             names.add(full);
         }
         return String.join(", ", names);
     }
 
-    /** "mm:ss" depuis minutes (float). */
     private String formatDuration(float minutes) {
-        int totalSeconds = Math.max(0, Math.round(minutes * 60f));
+        int totalSeconds = Math.max(0, Math.round(minutes * 60));
         int mm = totalSeconds / 60;
         int ss = totalSeconds % 60;
         return String.format("%d:%02d", mm, ss);
     }
 
-    private String safe(String s) { return s == null ? "" : s; }
+    private static float mmSsToFloatMinutes(String mmss) {
+        String[] parts = mmss.split(":");
+        int m = Integer.parseInt(parts[0]);
+        int s = Integer.parseInt(parts[1]);
+        return m + (s / 60f);
+    }
 
-    /* ===================== Renderer (Musiques) ===================== */
+    private String safe(String s) { return (s == null) ? "" : s.trim(); }
+
+    private Artiste findOrCreateArtistByDisplayName(String display) {
+        // On tente d'abord par pseudo (le plus distinctif)
+        Artiste a = artisteDAO.getByName(display);
+        if (a != null) return a;
+
+        // Heuristique simple Prenom Nom
+        String prenom = "", nom = "";
+        String[] parts = display.split("\\s+");
+        if (parts.length >= 2) {
+            prenom = parts[0];
+            nom = display.substring(prenom.length()).trim();
+        } else {
+            // si un seul token, on met en pseudo
+            return createArtist("", "", display);
+        }
+        return createArtist(nom, prenom, "");
+    }
+
+    private Artiste createArtist(String nom, String prenom, String pseudo) {
+        Artiste a = new Artiste(nom, prenom, pseudo, new ArrayList<>());
+        artisteDAO.add(a);
+        return a;
+    }
+
+    private void trySetArtists(Musique m, List<Artiste> artistes) {
+        try { Musique.class.getMethod("setArtistes", List.class).invoke(m, artistes); }
+        catch (Exception ignored) {}
+    }
+
+    private void trySetDuration(Musique m, float minutes) {
+        try { Musique.class.getMethod("setDuree", float.class).invoke(m, minutes); }
+        catch (Exception ignored) {}
+    }
+
+    /* ===================== RENDERER ===================== */
 
     static class MusicCellRenderer extends JPanel implements javax.swing.table.TableCellRenderer {
         private final JLabel cover = new JLabel();
@@ -336,21 +527,27 @@ public class MainPageMusiqueController {
         private final Image defaultImg;
 
         MusicCellRenderer(JTable table) {
-            setLayout(new BorderLayout(12, 0)); setOpaque(true);
+            setLayout(new BorderLayout(12, 0));
+            setOpaque(true);
 
             JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 2));
             textPanel.setOpaque(false);
+
             title.setFont(title.getFont().deriveFont(Font.BOLD, 14f));
             subtitle.setForeground(new Color(110, 110, 110));
-            textPanel.add(title); textPanel.add(subtitle);
+
+            textPanel.add(title);
+            textPanel.add(subtitle);
 
             add(cover, BorderLayout.WEST);
             add(textPanel, BorderLayout.CENTER);
             setBorder(new EmptyBorder(8, 12, 8, 12));
 
             Image d = null;
-            try { URL u = MainPageController.class.getResource("/PP.png"); if (u != null) d = new ImageIcon(u).getImage(); }
-            catch (Exception ignored) {}
+            try {
+                URL u = MainPageController.class.getResource("/PP.png");
+                if (u != null) d = new ImageIcon(u).getImage();
+            } catch (Exception ignored) {}
             defaultImg = d;
         }
 
@@ -358,15 +555,15 @@ public class MainPageMusiqueController {
         public Component getTableCellRendererComponent(JTable table, Object value,
                                                        boolean isSelected, boolean hasFocus,
                                                        int row, int column) {
-            String raw = value == null ? "" : value.toString();
+            String raw = (value == null) ? "" : value.toString();
             String[] parts = raw.split("\n", 2);
-            String t = parts.length > 0 ? parts[0] : "";
-            String st = parts.length > 1 ? parts[1] : "";
+            String t = (parts.length > 0) ? parts[0] : "";
+            String st = (parts.length > 1) ? parts[1] : "";
 
             String url = null;
             try {
                 int modelRow = table.convertRowIndexToModel(row);
-                url = String.valueOf(table.getModel().getValueAt(modelRow, 1)); // CoverURL cachée
+                url = String.valueOf(table.getModel().getValueAt(modelRow, 1));
             } catch (Exception ignored) {}
 
             cover.setIcon(loadScaledIcon(url, 56, 56, defaultImg));
@@ -377,7 +574,8 @@ public class MainPageMusiqueController {
         }
     }
 
-    /* ===== Utils images ===== */
+    /* ===================== UTILS IMAGES ===================== */
+
     static ImageIcon loadScaledIcon(String urlOrPath, int w, int h, Image fallback) {
         Image img = null;
         try {
@@ -389,8 +587,10 @@ public class MainPageMusiqueController {
                 }
             }
         } catch (Exception ignored) {}
+
         if (img == null) img = fallback;
         if (img == null) return null;
+
         Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
         return new ImageIcon(scaled);
     }

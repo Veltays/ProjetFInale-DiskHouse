@@ -1,5 +1,7 @@
 package DiskHouse.Controller;
 
+import DiskHouse.model.DAO.AlbumFileDAO;
+import DiskHouse.model.DAO.ArtisteFileDAO;
 import DiskHouse.model.entity.Album;
 import DiskHouse.model.entity.Artiste;
 import DiskHouse.view.ArtisteEditor;
@@ -8,95 +10,150 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-/**
- * Contrôleur de la vue ArtisteEditor.
- * - Reçoit un Artiste et sa liste d'albums à afficher.
- * - Initialise la vue et l'affiche (respect MVC).
- */
 public class ArtisteEditorController implements IController<ArtisteEditor> {
 
     private final ArtisteEditor view;
 
+    private final ArtisteFileDAO artisteDAO = new ArtisteFileDAO("data/artistes.dat");
+    private final AlbumFileDAO   albumDAO   = new AlbumFileDAO("data/albums.dat");
+
+    private Artiste currentArtiste;     // null en création
+    private String portraitPathOrUrl;   // chemin/URL de portrait (optionnel)
+
     public ArtisteEditorController(ArtisteEditor view) {
-        this.view = view;
+        this.view = Objects.requireNonNull(view);
     }
 
-    @Override
-    public ArtisteEditor getView() {
-        return view;
-    }
+    @Override public ArtisteEditor getView() { return view; }
 
     @Override
     public void initController() {
-        // Brancher ici les listeners des boutons (＋ / 🗑) si nécessaire
+        // listeners éventuels
     }
 
-    /** Charge les données dans la vue (nom + liste d'albums + portrait éventuel). */
-    public void loadData(Artiste artiste, List<Album> albums, Image portraitOrNull) {
-        view.setArtistName(displayName(artiste));
+    public void openForCreate(Window parent) {
+        currentArtiste = null;
+        portraitPathOrUrl = null;
+        view.setArtistName("Nouvel artiste");
+        view.getAlbumsList().setModel(new DefaultListModel<>());
+        view.setPortraitImage(null);
+        show(parent);
+    }
 
-        // Liste des albums (uniques, dans l'ordre reçu)
+    public void openForEdit(Window parent, Artiste artiste, List<Album> albumsOrNull) {
+        currentArtiste = Objects.requireNonNull(artiste);
+        portraitPathOrUrl = null;
+        loadData(artiste, albumsOrNull, null);
+        show(parent);
+    }
+
+    public void openForEditById(Window parent, String artisteId) {
+        Artiste a = artisteDAO.getById(artisteId);
+        if (a == null) {
+            JOptionPane.showMessageDialog(view, "Artiste introuvable (id=" + artisteId + ").",
+                    "Information", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        currentArtiste = a;
+        portraitPathOrUrl = null;
+        List<Album> allAlbums = albumDAO.getAll();
+        loadData(a, allAlbums, null);
+        show(parent);
+    }
+
+    public void loadData(Artiste artiste, List<Album> albums, Image portrait) {
+        view.setArtistName(formatArtistName(artiste));
+
         DefaultListModel<String> model = new DefaultListModel<>();
-        Set<String> uniques = new LinkedHashSet<>();
-        for (Album a : albums) {
-            if (a == null) continue;
-            String title = a.getTitreAlbum() == null ? "Sans titre" : a.getTitreAlbum();
-            if (uniques.add(title)) model.addElement(title);
+        Set<String> titlesSeen = new LinkedHashSet<>();
+        if (albums != null) {
+            for (Album album : albums) {
+                if (album == null) continue;
+                String title = album.getTitreAlbum();
+                if (title == null || title.isBlank()) title = "Sans titre";
+                if (titlesSeen.add(title)) model.addElement(title);
+            }
         }
         view.getAlbumsList().setModel(model);
 
-        // Portrait si présent
-        if (portraitOrNull != null) {
-            view.setPortraitImage(portraitOrNull);
+        if (portrait != null) view.setPortraitImage(portrait);
+        else if (portraitPathOrUrl != null) {
+            Image loaded = tryLoadImage(portraitPathOrUrl);
+            if (loaded != null) view.setPortraitImage(loaded);
         }
     }
 
-    /** Affiche la fenêtre proprement (centrage par rapport au parent). */
-    public void show(Window parentOrNull) {
+    public Artiste saveToDAO() {
+        // ⚠️ ta vue n'a pas getArtistName(); on lit le champ :
+        String display = safe(view.getArtistNameField().getText());
+        if (display.isEmpty()) {
+            showError(view, "Le nom/pseudo de l'artiste ne peut pas être vide.", "Erreur");
+            return null;
+        }
+
+        if (currentArtiste == null) {
+            currentArtiste = new Artiste("", "", display, new java.util.ArrayList<>());
+            artisteDAO.add(currentArtiste);
+        } else {
+            if (currentArtiste.getPseudo() != null && !currentArtiste.getPseudo().isBlank()) {
+                trySetPseudo(currentArtiste, display);
+            } else {
+                trySetPrenom(currentArtiste, display);
+            }
+            artisteDAO.update(currentArtiste);
+        }
+        return currentArtiste;
+    }
+
+    public void show(Window parent) {
         view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         if (view.getWidth() == 0 || view.getHeight() == 0) view.pack();
-        view.setLocationRelativeTo(parentOrNull);
+        view.setLocationRelativeTo(parent);
         view.setVisible(true);
         view.toFront();
         view.requestFocus();
     }
 
-    /* ======================= Helpers ======================= */
-
-    private String displayName(Artiste a) {
-        if (a == null) return "";
-        try {
-            String pseudo = safe(a.getPseudo());
-            if (!pseudo.isBlank()) return pseudo;
-        } catch (Throwable ignored) {}
-        String prenom = safe(a.getPrenom());
-        String nom    = safe(a.getNom());
-        String full   = (prenom + " " + nom).trim();
-        return full.isBlank() ? "Inconnu" : full;
+    private String formatArtistName(Artiste artiste) {
+        if (artiste == null) return "Inconnu";
+        String pseudo = safe(artiste.getPseudo());
+        if (!pseudo.isEmpty()) return pseudo;
+        String prenom = safe(artiste.getPrenom());
+        String nom = safe(artiste.getNom());
+        String fullName = (prenom + " " + nom).trim();
+        return fullName.isEmpty() ? "Inconnu" : fullName;
     }
 
-    private String safe(String s) { return s == null ? "" : s; }
+    private static String safe(String s) { return s == null ? "" : s.trim(); }
 
-    /** Convertit une URL/chemin en Image (ou null si échec). */
-    public static Image tryLoadImage(String urlOrPath) {
-        try {
-            if (urlOrPath == null || urlOrPath.isBlank()) return null;
-            ImageIcon ic = new ImageIcon(urlOrPath);
-            return (ic.getIconWidth() > 0 && ic.getIconHeight() > 0) ? ic.getImage() : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
+    public static Image tryLoadImage(String path) {
+        if (path == null || path.isBlank()) return null;
+        ImageIcon icon = new ImageIcon(path);
+        return (icon.getIconWidth() > 0 && icon.getIconHeight() > 0) ? icon.getImage() : null;
     }
 
-    /** Extrait les titres uniques d'une liste d'albums. */
-    public static List<String> toTitles(List<Album> albums) {
-        return albums.stream()
-                .filter(a -> a != null && a.getTitreAlbum() != null)
-                .map(Album::getTitreAlbum)
-                .distinct()
-                .collect(Collectors.toList());
+    private void trySetPseudo(Artiste a, String pseudo) {
+        try { Artiste.class.getMethod("setPseudo", String.class).invoke(a, pseudo); }
+        catch (Exception ignored) {}
+    }
+    private void trySetPrenom(Artiste a, String prenom) {
+        try { Artiste.class.getMethod("setPrenom", String.class).invoke(a, prenom); }
+        catch (Exception ignored) {}
+    }
+
+    public void setPortraitPath(String path) { this.portraitPathOrUrl = path; }
+
+    /* ==== Implémentations IController ==== */
+    @Override
+    public void showError(Component parent, String message, String title) {
+        JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    @Override
+    public void showInfo(Component parent, String message, String title) {
+        JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
     }
 }

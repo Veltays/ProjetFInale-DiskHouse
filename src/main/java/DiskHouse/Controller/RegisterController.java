@@ -15,15 +15,20 @@ public class RegisterController implements IController<Register> {
     private final Register view;
     private final PropertiesAuthenticator authenticator;
 
+    /* ===================== CONSTRUCTEUR ===================== */
+
     public RegisterController(Register view) {
         this.view = Objects.requireNonNull(view);
         this.authenticator = new PropertiesAuthenticator();
     }
 
-    @Override
-    public Register getView() { return view; }
+    /* ===================== INIT CONTROLLER ===================== */
 
-    /** Appelé depuis le constructeur de la vue */
+    @Override
+    public Register getView() {
+        return view;
+    }
+
     @Override
     public void initController() {
         view.getSInscrireButton().addActionListener(e -> onRegister());
@@ -34,23 +39,36 @@ public class RegisterController implements IController<Register> {
         addPlaceholder(view.getPasswordFieldConfirmPassword(), "Confirmer le mot de passe");
     }
 
-    /* ================= Actions ================= */
+    /* ===================== ACTIONS ===================== */
 
     private void onRegister() {
         String username = safeText(view.getTextFieldUsername(), "Entrez votre nom d’utilisateur");
-        String pwd = safePassword(view.getPasswordField(), "Mot de passe");
+        String password = safePassword(view.getPasswordField(), "Mot de passe");
         String confirm = safePassword(view.getPasswordFieldConfirmPassword(), "Confirmer le mot de passe");
 
-        if (username.isBlank()) { showError(view, "Le nom d’utilisateur est vide.", "Erreur"); return; }
-        if (pwd.isEmpty() || confirm.isEmpty()) { showError(view, "Veuillez encoder les deux mots de passe.", "Erreur"); return; }
-        if (!pwd.equals(confirm)) { showError(view, "Les mots de passe ne correspondent pas.", "Erreur"); return; }
-        if (pwd.length() < 6) { showError(view, "Mot de passe trop court (min 6).", "Erreur"); return; }
+        if (username.isBlank()) {
+            showError(view, "Le nom d’utilisateur est vide.", "Erreur");
+            return;
+        }
+        if (password.isEmpty() || confirm.isEmpty()) {
+            showError(view, "Veuillez entrer les deux mots de passe.", "Erreur");
+            return;
+        }
+        if (!password.equals(confirm)) {
+            showError(view, "Les mots de passe ne correspondent pas.", "Erreur");
+            return;
+        }
+        if (password.length() < 6) {
+            showError(view, "Mot de passe trop court (min 6 caractères).", "Erreur");
+            return;
+        }
 
-        boolean created = authenticator.registerUser(username, pwd);
+        boolean created = authenticator.registerUser(username, password);
         if (!created) {
             showInfo(view, "Ce nom d’utilisateur existe déjà.", "Information");
             return;
         }
+
         showInfo(view, "Compte créé avec succès !", "Succès");
         onOpenLogin();
     }
@@ -62,14 +80,15 @@ public class RegisterController implements IController<Register> {
         });
     }
 
-    /* ================= Helpers ================= */
+    /* ===================== HELPERS ===================== */
 
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
 
         field.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
+            @Override
+            public void focusGained(FocusEvent e) {
                 if (field.getText().equals(placeholder)) {
                     field.setText("");
                     field.setForeground(Color.BLACK);
@@ -77,7 +96,8 @@ public class RegisterController implements IController<Register> {
                     field.selectAll();
                 }
             }
-            @Override public void focusLost(FocusEvent e) {
+            @Override
+            public void focusLost(FocusEvent e) {
                 if (field.getText().isBlank()) {
                     field.setText(placeholder);
                     field.setForeground(Color.GRAY);
@@ -94,7 +114,8 @@ public class RegisterController implements IController<Register> {
         field.setEchoChar((char) 0);
 
         field.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
+            @Override
+            public void focusGained(FocusEvent e) {
                 String txt = new String(field.getPassword());
                 if (txt.equals(placeholder)) {
                     field.setText("");
@@ -104,7 +125,8 @@ public class RegisterController implements IController<Register> {
                     field.selectAll();
                 }
             }
-            @Override public void focusLost(FocusEvent e) {
+            @Override
+            public void focusLost(FocusEvent e) {
                 String txt = new String(field.getPassword()).trim();
                 if (txt.isEmpty()) {
                     field.setText(placeholder);
