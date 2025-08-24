@@ -2,14 +2,10 @@ package DiskHouse.Controller;
 
 import DiskHouse.model.Utils.ExportCsv;
 import DiskHouse.model.Utils.ExportXml;
-import DiskHouse.model.Utils.ExportJson;
-import DiskHouse.model.Utils.ExportTxt;
 import DiskHouse.model.Utils.IExport;
 import DiskHouse.model.Utils.IImport;
 import DiskHouse.model.Utils.ImportCsv;
 import DiskHouse.model.Utils.ImportXml;
-import DiskHouse.model.Utils.ImportJson;
-import DiskHouse.model.Utils.ImportTxt;
 import javax.swing.*;
 import java.io.File;
 import java.time.format.DateTimeFormatter;
@@ -70,13 +66,16 @@ public class MainPageMenuController {
         view.getExportCsvMenuItem().addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Exporter en CSV");
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Fichiers CSV (*.csv)", "csv"));
             int userSelection = fileChooser.showSaveDialog(view);
             if (userSelection == JFileChooser.APPROVE_OPTION) {
                 File fileToSave = fileChooser.getSelectedFile();
+                String path = fileToSave.getAbsolutePath();
+                if (!path.toLowerCase().endsWith(".csv")) {
+                    fileToSave = new File(path + ".csv");
+                }
                 try {
-                    IExport exporter = new ExportCsv();
-                    List<?> data = root.getAlbumDAO().getAll(); // À adapter selon le type à exporter
-                    exporter.export(data, fileToSave.getAbsolutePath());
+                    new ExportCsv().export(root.getPlaylists(), fileToSave.getAbsolutePath());
                     JOptionPane.showMessageDialog(view, "Export CSV réussi !", "Export", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(view, "Erreur lors de l'export CSV : " + ex.getMessage(), "Erreur Export", JOptionPane.ERROR_MESSAGE);
@@ -87,52 +86,19 @@ public class MainPageMenuController {
         view.getExportXmlMenuItem().addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Exporter en XML");
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Fichiers XML (*.xml)", "xml"));
             int userSelection = fileChooser.showSaveDialog(view);
             if (userSelection == JFileChooser.APPROVE_OPTION) {
                 File fileToSave = fileChooser.getSelectedFile();
+                String path = fileToSave.getAbsolutePath();
+                if (!path.toLowerCase().endsWith(".xml")) {
+                    fileToSave = new File(path + ".xml");
+                }
                 try {
-                    IExport exporter = new ExportXml();
-                    List<?> data = root.getAlbumDAO().getAll(); // À adapter selon le type à exporter
-                    exporter.export(data, fileToSave.getAbsolutePath());
+                    new ExportXml().export(root.getPlaylists(), fileToSave.getAbsolutePath());
                     JOptionPane.showMessageDialog(view, "Export XML réussi !", "Export", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(view, "Erreur lors de l'export XML : " + ex.getMessage(), "Erreur Export", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        // Export JSON (si le menu existe côté vue)
-        if (view.getExportJsonMenuItem() != null) {
-            view.getExportJsonMenuItem().addActionListener(e -> {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Exporter en JSON");
-                int userSelection = fileChooser.showSaveDialog(view);
-                if (userSelection == JFileChooser.APPROVE_OPTION) {
-                    File fileToSave = fileChooser.getSelectedFile();
-                    try {
-                        IExport exporter = new ExportJson();
-                        List<?> data = root.getAlbumDAO().getAll(); // À adapter selon le type à exporter
-                        exporter.export(data, fileToSave.getAbsolutePath());
-                        JOptionPane.showMessageDialog(view, "Export JSON réussi !", "Export", JOptionPane.INFORMATION_MESSAGE);
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(view, "Erreur lors de l'export JSON : " + ex.getMessage(), "Erreur Export", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            });
-        }
-        // Export TXT
-        view.getExportTxtMenuItem().addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Exporter en TXT");
-            int userSelection = fileChooser.showSaveDialog(view);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                try {
-                    IExport exporter = new ExportTxt();
-                    List<?> data = root.getAlbumDAO().getAll(); // À adapter selon le type à exporter
-                    exporter.export(data, fileToSave.getAbsolutePath());
-                    JOptionPane.showMessageDialog(view, "Export TXT réussi !", "Export", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(view, "Erreur lors de l'export TXT : " + ex.getMessage(), "Erreur Export", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
@@ -144,9 +110,7 @@ public class MainPageMenuController {
             if (userSelection == JFileChooser.APPROVE_OPTION) {
                 File fileToImport = fileChooser.getSelectedFile();
                 try {
-                    IImport importer = new ImportCsv();
-                    java.util.List<?> imported = importer.importData(fileToImport.getAbsolutePath());
-                    // TODO : Ajouter les objets importés dans le DAO ou la structure de données
+                    new ImportCsv().importData(fileToImport.getAbsolutePath());
                     JOptionPane.showMessageDialog(view, "Import CSV réussi !", "Import", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(view, "Erreur lors de l'import CSV : " + ex.getMessage(), "Erreur Import", JOptionPane.ERROR_MESSAGE);
@@ -161,56 +125,15 @@ public class MainPageMenuController {
             if (userSelection == JFileChooser.APPROVE_OPTION) {
                 File fileToImport = fileChooser.getSelectedFile();
                 try {
-                    IImport importer = new ImportXml();
-                    java.util.List<?> imported = importer.importData(fileToImport.getAbsolutePath());
-                    // TODO : Ajouter les objets importés dans le DAO ou la structure de données
+                    new ImportXml().importData(fileToImport.getAbsolutePath());
                     JOptionPane.showMessageDialog(view, "Import XML réussi !", "Import", JOptionPane.INFORMATION_MESSAGE);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(view, "Erreur lors de l'import XML : " + ex.getMessage(), "Erreur Import", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
-        // Import JSON
-        view.getImportJsonMenuItem().addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Importer un fichier JSON");
-            int userSelection = fileChooser.showOpenDialog(view);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToImport = fileChooser.getSelectedFile();
-                try {
-                    IImport importer = new ImportJson();
-                    java.util.List<?> imported = importer.importData(fileToImport.getAbsolutePath());
-                    // TODO : Ajouter les objets importés dans le DAO ou la structure de données
-                    JOptionPane.showMessageDialog(view, "Import JSON réussi !", "Import", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(view, "Erreur lors de l'import JSON : " + ex.getMessage(), "Erreur Import", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
-        // Import TXT
-        view.getImportTxtMenuItem().addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setDialogTitle("Importer un fichier TXT");
-            int userSelection = fileChooser.showOpenDialog(view);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToImport = fileChooser.getSelectedFile();
-                try {
-                    IImport importer = new ImportTxt();
-                    java.util.List<?> imported = importer.importData(fileToImport.getAbsolutePath());
-                    // TODO : Ajouter les objets importés dans le DAO ou la structure de données
-                    JOptionPane.showMessageDialog(view, "Import TXT réussi !", "Import", JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(view, "Erreur lors de l'import TXT : " + ex.getMessage(), "Erreur Import", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-        });
         // Couleur
-        view.getColorBlackMenuItem().addActionListener(e ->
-            JOptionPane.showMessageDialog(view, "Vous avez choisi : Couleur Noir", "Menu", JOptionPane.INFORMATION_MESSAGE)
-        );
-        view.getColorWhiteMenuItem().addActionListener(e ->
-            JOptionPane.showMessageDialog(view, "Vous avez choisi : Couleur Blanc", "Menu", JOptionPane.INFORMATION_MESSAGE)
-        );
+        // Suppression des actions liées au menu Couleur (Noir/Blanc)
     }
     // À compléter plus tard (actions de menu, raccourcis, etc.)
 }

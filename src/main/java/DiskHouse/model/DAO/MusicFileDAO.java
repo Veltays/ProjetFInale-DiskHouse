@@ -150,6 +150,13 @@ public class MusicFileDAO implements IDAO<Musique> {
         }
     }
 
+    /**
+     * Remplace toutes les musiques par la liste fournie (pour import/export global).
+     */
+    public void replaceAll(List<Musique> musiques) {
+        saveAll(musiques);
+    }
+
     // ------------------- Helpers -------------------
     private static String nz(String s) { return (s == null) ? "" : s; }
 

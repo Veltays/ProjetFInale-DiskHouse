@@ -1,3 +1,9 @@
+//************************************************//
+//************** REGISTER CONTROLLER **************//
+//************************************************//
+// Contrôleur pour la gestion de l'inscription utilisateur.
+// Gère la logique d'UI, la validation, la création de compte et la navigation.
+
 package DiskHouse.Controller;
 
 import DiskHouse.model.service.PropertiesAuthenticator;
@@ -12,40 +18,45 @@ import java.util.Objects;
 
 public class RegisterController implements IController<Register> {
 
+    //************************************************//
+    //************** ATTRIBUTS ************************//
+    //************************************************//
     private final Register view;
     private final PropertiesAuthenticator authenticator;
 
-    /* ===================== CONSTRUCTEUR ===================== */
-
+    //************************************************//
+    //************** CONSTRUCTEUR *********************//
+    //************************************************//
     public RegisterController(Register view) {
         this.view = Objects.requireNonNull(view);
         this.authenticator = new PropertiesAuthenticator();
     }
 
-    /* ===================== INIT CONTROLLER ===================== */
-
+    //************************************************//
+    //************** GETTEUR VUE **********************//
+    //************************************************//
     @Override
-    public Register getView() {
-        return view;
-    }
+    public Register getView() { return view; }
 
+    //************************************************//
+    //************** INITIALISATION *******************//
+    //************************************************//
     @Override
     public void initController() {
         view.getSInscrireButton().addActionListener(e -> onRegister());
         view.getVousAvezDejaUnButton().addActionListener(e -> onOpenLogin());
-
         addPlaceholder(view.getTextFieldUsername(), "Entrez votre nom d’utilisateur");
         addPlaceholder(view.getPasswordField(), "Mot de passe");
         addPlaceholder(view.getPasswordFieldConfirmPassword(), "Confirmer le mot de passe");
     }
 
-    /* ===================== ACTIONS ===================== */
-
+    //************************************************//
+    //************** ACTIONS **************************//
+    //************************************************//
     private void onRegister() {
         String username = safeText(view.getTextFieldUsername(), "Entrez votre nom d’utilisateur");
         String password = safePassword(view.getPasswordField(), "Mot de passe");
         String confirm = safePassword(view.getPasswordFieldConfirmPassword(), "Confirmer le mot de passe");
-
         if (username.isBlank()) {
             showError(view, "Le nom d’utilisateur est vide.", "Erreur");
             return;
@@ -62,13 +73,11 @@ public class RegisterController implements IController<Register> {
             showError(view, "Mot de passe trop court (min 6 caractères).", "Erreur");
             return;
         }
-
         boolean created = authenticator.registerUser(username, password);
         if (!created) {
             showInfo(view, "Ce nom d’utilisateur existe déjà.", "Information");
             return;
         }
-
         showInfo(view, "Compte créé avec succès !", "Succès");
         onOpenLogin();
     }
@@ -80,12 +89,12 @@ public class RegisterController implements IController<Register> {
         });
     }
 
-    /* ===================== HELPERS ===================== */
-
+    //************************************************//
+    //************** HELPERS **************************//
+    //************************************************//
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
-
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -108,11 +117,9 @@ public class RegisterController implements IController<Register> {
 
     private void addPlaceholder(JPasswordField field, String placeholder) {
         final char normalEcho = field.getEchoChar();
-
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
         field.setEchoChar((char) 0);
-
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -145,5 +152,15 @@ public class RegisterController implements IController<Register> {
     private String safePassword(JPasswordField pf, String placeholder) {
         String val = new String(pf.getPassword());
         return val.equals(placeholder) ? "" : val;
+    }
+
+    @Override
+    public void showError(Component parent, String message, String title) {
+        JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    @Override
+    public void showInfo(Component parent, String message, String title) {
+        JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
     }
 }

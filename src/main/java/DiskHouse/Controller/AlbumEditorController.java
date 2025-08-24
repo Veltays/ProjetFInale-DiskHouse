@@ -1,3 +1,9 @@
+//************************************************//
+//************** ALBUM EDITOR CONTROLLER *********//
+//************************************************//
+// Contrôleur pour la création et l'édition d'un album.
+// Gère la logique d'UI, la validation, la persistance DAO et les interactions utilisateur.
+
 package DiskHouse.Controller;
 
 import DiskHouse.model.DAO.AlbumFileDAO;
@@ -18,51 +24,135 @@ import java.util.Objects;
 
 public class AlbumEditorController implements IController<AlbumEditor> {
 
+    //************************************************//
+    //************** ATTRIBUTS ************************//
+    //************************************************//
     private final AlbumEditor view;
-
-    // DAO
-    private final AlbumFileDAO albumDAO = new AlbumFileDAO("data/albums.dat");
-    private final MusicFileDAO musicDAO = new MusicFileDAO("data/musiques.dat");
-
-    // État
+    private final String username;
+    private final AlbumFileDAO albumDAO;
+    private final MusicFileDAO musicDAO;
     private DefaultTableModel songsTableModel;
     private String selectedImagePath;
     private Album currentAlbum; // null = création
 
-    public AlbumEditorController(AlbumEditor view) { this.view = Objects.requireNonNull(view); }
+    //************************************************//
+    //************** CONSTRUCTEUR *********************//
+    //************************************************//
+    public AlbumEditorController(AlbumEditor view, String username) {
+        this.view = Objects.requireNonNull(view);
+        this.username = username;
+        this.albumDAO = new AlbumFileDAO("data/" + username + "_albums.dat");
+        this.musicDAO = new MusicFileDAO("data/" + username + "_musiques.dat");
+    }
 
-    @Override public AlbumEditor getView() { return view; }
+    //************************************************//
+    //************** GETTEUR VUE **********************//
+    //************************************************//
+    @Override
+    public AlbumEditor getView() { return view; }
 
+    //************************************************//
+    //************** INITIALISATION *******************//
+    //************************************************//
     @Override
     public void initController() {
-        initSongsList();
-        initCoverImageClick();
+        initSongsTable();
+        initCoverImageListener();
         initTitleEdition();
         initButtons();
         initShortcuts();
     }
 
-    /* ===================== OUVERTURE ===================== */
+    private void initSongsTable() {
+        songsTableModel = new DefaultTableModel(new Object[]{"Titre", "Durée"}, 0);
+        view.getSongsList().setModel(songsTableModel);
+        view.getSongsList().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && view.getSongsList().getSelectedRow() >= 0) {
+                    onRenameSong();
+                }
+            }
+        });
+    }
 
+    private void initCoverImageListener() {
+        view.getCoverLabel().setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        view.getCoverLabel().setToolTipText("Cliquer pour choisir une pochette (png/jpg/jpeg)");
+        view.getCoverLabel().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                onChooseImage();
+            }
+        });
+    }
+
+    private void initTitleEdition() {
+        view.getEditAlbumButton().addActionListener(e -> {
+            JTextField tf = view.getAlbumTitleField();
+            tf.requestFocusInWindow();
+            tf.selectAll();
+        });
+        view.getAlbumTitleField().addActionListener(e -> onCommitTitle());
+        view.getAlbumTitleField().addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                onCommitTitle();
+            }
+        });
+    }
+
+    private void initButtons() {
+        view.getAddSongButton().addActionListener(e -> onAddSong());
+        view.getRemoveSongButton().addActionListener(e -> onRemoveSong());
+        view.getCancelButton().addActionListener(e -> view.dispose());
+        view.getOkButton().addActionListener(e -> {
+            Album saved = saveAlbumToDAO();
+            if (saved != null) {
+                view.dispose();
+            }
+        });
+    }
+
+    private void initShortcuts() {
+        JRootPane root = view.getRootPane();
+        InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = root.getActionMap();
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "add-song");
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "remove-song");
+        am.put("add-song", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onAddSong();
+            }
+        });
+        am.put("remove-song", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                onRemoveSong();
+            }
+        });
+    }
+
+    //************************************************//
+    //************** OUVERTURE ************************//
+    //************************************************//
     public void openForCreate() {
         currentAlbum = null;
-        view.setAlbumTitle("");          // garde le placeholder
+        view.setAlbumTitle("");
         selectedImagePath = null;
         view.setCoverImage((String) null);
         songsTableModel.setRowCount(0);
         view.ensureSongsPlaceholder();
-        // Ajout : champ date vide ou date du jour
         view.setAlbumDate("");
         view.setLocationRelativeTo(SwingUtilities.getWindowAncestor(view));
-        view.setVisible(true);           // modal
+        view.setVisible(true);
     }
 
     public void openForEdit(Album album) {
         currentAlbum = Objects.requireNonNull(album);
-
         view.setAlbumTitle(album.getTitreAlbum());
         selectedImagePath = album.getCoverImageURL();
-        // Ajout : afficher la date de sortie
         if (album.getDateSortie() != null) {
             view.setAlbumDate(album.getDateSortie().toString());
         } else {
@@ -84,17 +174,17 @@ public class AlbumEditorController implements IController<AlbumEditor> {
         view.setVisible(true);
     }
 
-    /* ===================== PERSIST ===================== */
-
-    public Album saveToDAO() {
+    //************************************************//
+    //************** PERSISTANCE DAO ******************//
+    //************************************************//
+    public Album saveAlbumToDAO() {
         String title = safeTrim(view.getAlbumTitleField().getText());
         if (title == null || title.isEmpty() || "Titre de l’album".equals(title)) {
             showError(view, "Le nom de l'album ne peut pas être vide.", "Erreur");
             return null;
         }
-        // Lecture de la date
         String dateStr = view.getAlbumDate();
-        LocalDate date = null;
+        LocalDate date;
         if (dateStr != null && !dateStr.isBlank()) {
             try {
                 date = LocalDate.parse(dateStr);
@@ -116,18 +206,17 @@ public class AlbumEditorController implements IController<AlbumEditor> {
             toPersist = currentAlbum;
             albumDAO.update(toPersist);
         }
-        persistSongsOfUI(toPersist);
+        saveSongsFromTableToDAO(toPersist);
         return toPersist;
     }
 
-    private void persistSongsOfUI(Album album) {
+    private void saveSongsFromTableToDAO(Album album) {
         for (int i = 0; i < songsTableModel.getRowCount(); i++) {
             String title = (String) songsTableModel.getValueAt(i, 0);
             String mmss = (String) songsTableModel.getValueAt(i, 1);
-            ParsedSong ps = new ParsedSong(title, mmss);
-            if (ps == null) continue;
-            float minutes = mmSsToFloatMinutes(ps.mmss);
-            Musique m = new Musique(ps.title, minutes, album, new ArrayList<>(), null);
+            if (title == null || mmss == null) continue;
+            float minutes = mmSsToFloatMinutes(mmss);
+            Musique m = new Musique(title, minutes, album, new ArrayList<>(), null);
             musicDAO.add(m);
         }
     }
@@ -146,72 +235,21 @@ public class AlbumEditorController implements IController<AlbumEditor> {
         }
     }
 
-    /* ===================== INIT UI ===================== */
-
-    private void initSongsList() {
-        songsTableModel = new DefaultTableModel(new Object[]{"Titre", "Durée"}, 0);
-        view.getSongsList().setModel(songsTableModel);
-        view.getSongsList().addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2 && view.getSongsList().getSelectedRow() >= 0) onRenameSong();
-            }
-        });
-    }
-
-    private void initCoverImageClick() {
-        view.getCoverLabel().setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        view.getCoverLabel().setToolTipText("Cliquer pour choisir une pochette (png/jpg/jpeg)");
-        view.getCoverLabel().addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) { onChooseImage(); }
-        });
-    }
-
-    private void initTitleEdition() {
-        view.getEditAlbumButton().addActionListener(e -> {
-            var tf = view.getAlbumTitleField();
-            tf.requestFocusInWindow();
-            tf.selectAll();
-        });
-        view.getAlbumTitleField().addActionListener(e -> onCommitTitle());
-        view.getAlbumTitleField().addFocusListener(new FocusAdapter() {
-            @Override public void focusLost(FocusEvent e) { onCommitTitle(); }
-        });
-    }
-
-    private void initButtons() {
-        view.getAddSongButton().addActionListener(e -> onAddSong());
-        view.getRemoveSongButton().addActionListener(e -> onRemoveSong());
-
-        // Annuler / Enregistrer
-        view.getCancelButton().addActionListener(e -> view.dispose());
-        view.getOkButton().addActionListener(e -> {
-            Album saved = saveToDAO();
-            if (saved != null) view.dispose();
-        });
-    }
-
-    private void initShortcuts() {
-        JRootPane root = view.getRootPane();
-        InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-        ActionMap am = root.getActionMap();
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "add-song");
-        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "remove-song");
-        am.put("add-song", new AbstractAction() { @Override public void actionPerformed(ActionEvent e) { onAddSong(); }});
-        am.put("remove-song", new AbstractAction() { @Override public void actionPerformed(ActionEvent e) { onRemoveSong(); }});
-    }
-
-    /* ===================== ACTIONS ===================== */
-
+    //************************************************//
+    //************** ACTIONS UI ************************//
+    //************************************************//
     private void onChooseImage() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Choisir une pochette");
         chooser.setAcceptAllFileFilterUsed(false);
         chooser.addChoosableFileFilter(new FileNameExtensionFilter("Images (png, jpg, jpeg)", "png", "jpg", "jpeg"));
         int result = chooser.showOpenDialog(view);
-        if (result == JFileChooser.APPROVE_OPTION && chooser.getSelectedFile() != null) {
+        if (result == JFileChooser.APPROVE_OPTION) {
             java.io.File file = chooser.getSelectedFile();
-            selectedImagePath = file.toURI().toString();
-            view.setCoverImage(selectedImagePath);
+            if (file != null) {
+                selectedImagePath = file.toURI().toString();
+                view.setCoverImage(selectedImagePath);
+            }
         }
     }
 
@@ -244,7 +282,10 @@ public class AlbumEditorController implements IController<AlbumEditor> {
 
     private void onRemoveSong() {
         int index = view.getSongsList().getSelectedRow();
-        if (index < 0) { showInfo(view, "Sélectionne une musique à supprimer.", "Information"); return; }
+        if (index < 0) {
+            showInfo(view, "Sélectionne une musique à supprimer.", "Information");
+            return;
+        }
         String song = (String) songsTableModel.getValueAt(index, 0);
         int confirm = JOptionPane.showConfirmDialog(view, "Supprimer \"" + song + "\" ?",
                 "Confirmation", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -273,30 +314,21 @@ public class AlbumEditorController implements IController<AlbumEditor> {
         }
     }
 
-    /* ===================== HELPERS ===================== */
-
-    @Override public void showError(Component parent, String message, String title) {
+    //************************************************//
+    //************** HELPERS **************************//
+    //************************************************//
+    @Override
+    public void showError(Component parent, String message, String title) {
         JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);
     }
-    @Override public void showInfo(Component parent, String message, String title) {
+    @Override
+    public void showInfo(Component parent, String message, String title) {
         JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private static String safeTrim(String s) { return s == null ? null : s.trim(); }
-
-    private static class ParsedSong { final String title, mmss; ParsedSong(String t, String d){title=t;mmss=d;} }
-
-    private static ParsedSong parseSongLine(String raw) {
-        if (raw == null) return null;
-        int p = raw.lastIndexOf("  (");
-        int q = raw.endsWith(")") ? raw.length() - 1 : -1;
-        if (p > 0 && q > p+3) {
-            String title = raw.substring(0, p).trim();
-            String mmss  = raw.substring(p + 3, q).trim();
-            if (!mmss.matches("^\\d{1,2}:[0-5]\\d$")) return null;
-            return new ParsedSong(title, mmss);
-        }
-        return null;
+    private static String safeTrim(String s) {
+        if (s == null) return null;
+        return s.trim();
     }
 
     private static float mmSsToFloatMinutes(String mmss) {
@@ -313,5 +345,7 @@ public class AlbumEditorController implements IController<AlbumEditor> {
         return String.format("%02d:%02d", mm, ss);
     }
 
-    public String getSelectedImagePath() { return selectedImagePath; }
+    public String getSelectedImagePath() {
+        return selectedImagePath;
+    }
 }

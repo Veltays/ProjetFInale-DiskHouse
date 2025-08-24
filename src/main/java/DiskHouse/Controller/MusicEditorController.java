@@ -1,3 +1,9 @@
+//************************************************//
+//************** MUSIC EDITOR CONTROLLER *********//
+//************************************************//
+// Contrôleur pour la création et l'édition d'une musique.
+// Gère la logique d'UI, la validation, la persistance DAO et les interactions utilisateur.
+
 package DiskHouse.Controller;
 
 import DiskHouse.model.DAO.AlbumFileDAO;
@@ -22,40 +28,57 @@ import java.util.Objects;
 
 public class MusicEditorController implements IController<MusicEditor> {
 
+    //************************************************//
+    //************** INTERFACE CALLBACK **************//
+    //************************************************//
     public interface Listener {
         void onMusicCreated(Musique created);
         void onMusicUpdated(Musique updated);
     }
 
+    //************************************************//
+    //************** ATTRIBUTS ************************//
+    //************************************************//
     private final MusicEditor view;
     private final Listener listener;
-
-    private final MusicFileDAO   musicDAO   = new MusicFileDAO("data/musiques.dat");
-    private final ArtisteFileDAO artisteDAO = new ArtisteFileDAO("data/artistes.dat");
-    private final AlbumFileDAO   albumDAO   = new AlbumFileDAO("data/albums.dat");
-
+    private final String username;
+    private final MusicFileDAO musicDAO;
+    private final ArtisteFileDAO artisteDAO;
+    private final AlbumFileDAO albumDAO;
     private String selectedImagePath;
     private Musique current; // null en création
 
-    public MusicEditorController(MusicEditor view) { this(view, null); }
-    public MusicEditorController(MusicEditor view, Listener listener) {
+    //************************************************//
+    //************** CONSTRUCTEUR *********************//
+    //************************************************//
+    public MusicEditorController(MusicEditor view, String username) {
+        this(view, username, null);
+    }
+    public MusicEditorController(MusicEditor view, String username, Listener listener) {
         this.view = Objects.requireNonNull(view);
+        this.username = username;
         this.listener = listener;
+        this.musicDAO = new MusicFileDAO("data/" + username + "_musiques.dat");
+        this.artisteDAO = new ArtisteFileDAO("data/" + username + "_artistes.dat");
+        this.albumDAO = new AlbumFileDAO("data/" + username + "_albums.dat");
     }
 
+    //************************************************//
+    //************** GETTEUR VUE **********************//
+    //************************************************//
     @Override public MusicEditor getView() { return view; }
 
+    //************************************************//
+    //************** INITIALISATION *******************//
+    //************************************************//
     @Override
     public void initController() {
         initImageChooser();
         initSubEditors();
         initValidationShortcut();
         preloadCombosFromDAO();
-        // Ajout : recharge dynamique des artistes lors de l'ouverture de la combo
         view.getArtisteCombo().addPopupMenuListener(new javax.swing.event.PopupMenuListener() {
-            @Override public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
-                reloadArtistesCombo();
-            }
+            @Override public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) { reloadArtistesCombo(); }
             @Override public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {}
             @Override public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {}
         });
@@ -67,16 +90,11 @@ public class MusicEditorController implements IController<MusicEditor> {
         Object selected = combo.getSelectedItem();
         combo.removeAllItems();
         var artistes = artisteDAO.getAll();
-        // Suppression du dialogue de debug
-        // JOptionPane.showMessageDialog(view, "Artistes trouvés : " + artistes.size(), "Debug", JOptionPane.INFORMATION_MESSAGE);
         for (var artiste : artistes) {
             combo.addItem(displayName(artiste));
         }
-        // Restaure la sélection si possible
         if (selected != null) combo.setSelectedItem(selected);
     }
-
-    /* ===================== UI WIRING ===================== */
 
     private void initImageChooser() {
         JLabel preview = view.getImagePreviewLabel();
@@ -88,9 +106,7 @@ public class MusicEditorController implements IController<MusicEditor> {
     }
 
     private void initSubEditors() {
-        // + Artiste
         view.getAddArtisteButton().addActionListener(e -> onOpenArtistEditor());
-        // + Album
         view.getAddAlbumButton().addActionListener(e -> onOpenAlbumEditor());
     }
 
@@ -102,14 +118,13 @@ public class MusicEditorController implements IController<MusicEditor> {
         am.put("validate-form", new AbstractAction() {
             @Override public void actionPerformed(ActionEvent e) { onValidateAndSave(); }
         });
-        // bouton enregistrer
         view.getSaveButton().addActionListener(e -> onValidateAndSave());
-        // bouton annuler
         view.getCancelButton().addActionListener(e -> view.dispose());
     }
 
-    /* ===================== OUVERTURE ===================== */
-
+    //************************************************//
+    //************** OUVERTURE ************************//
+    //************************************************//
     public void openForCreate(Window parent) {
         current = null;
         selectedImagePath = null;
@@ -118,22 +133,19 @@ public class MusicEditorController implements IController<MusicEditor> {
         view.getDureeField().setText("");
         view.getArtisteCombo().setSelectedItem(null);
         view.getAlbumCombo().setSelectedItem(null);
-        show(parent);
+        showDialog(parent);
     }
 
     public void openForEdit(Window parent, Musique musique) {
         current = Objects.requireNonNull(musique);
-
         view.getTitreField().setText(safe(musique.getTitre()));
         view.getDureeField().setText(floatMinutesToMmSs(musique.getDuree()));
-
         selectedImagePath = musique.getCoverImageURL();
         if (selectedImagePath != null && !selectedImagePath.isBlank()) {
             view.setPreviewImage(selectedImagePath);
         } else {
             view.setPreviewImage((String) null);
         }
-
         if (musique.getArtistes() != null && !musique.getArtistes().isEmpty()) {
             Artiste a0 = musique.getArtistes().get(0);
             view.getArtisteCombo().setSelectedItem(displayName(a0));
@@ -145,19 +157,20 @@ public class MusicEditorController implements IController<MusicEditor> {
         } else {
             view.getAlbumCombo().setSelectedItem(null);
         }
-        show(parent);
+        showDialog(parent);
     }
 
-    private void show(Window parent) {
+    private void showDialog(Window parent) {
         if (view.getWidth() == 0 || view.getHeight() == 0) view.pack();
         view.setLocationRelativeTo(parent);
-        view.setVisible(true); // JDialog MODAL
+        view.setVisible(true);
         view.toFront();
         view.requestFocus();
     }
 
-    /* ===================== ACTIONS ===================== */
-
+    //************************************************//
+    //************** ACTIONS UI ************************//
+    //************************************************//
     private void onChooseImage() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Choisir une image");
@@ -171,43 +184,36 @@ public class MusicEditorController implements IController<MusicEditor> {
         }
     }
 
-    /** Ouvre ArtisteEditor (JDialog modal), puis recharge la combo Artiste. */
     private void onOpenArtistEditor() {
         Window owner = SwingUtilities.getWindowAncestor(view);
         ArtisteEditor dlg = new ArtisteEditor(owner);
-        ArtisteEditorController ctrl = new ArtisteEditorController(dlg);
+        ArtisteEditorController ctrl = new ArtisteEditorController(dlg, username);
         ctrl.initController();
-        ctrl.show(owner);            // modal -> bloque jusqu'à fermeture
-        preloadCombosFromDAO();      // rafraîchir artistes après fermeture
+        ctrl.showDialog(owner);
+        preloadCombosFromDAO();
     }
 
-    /** Ouvre AlbumEditor (JDialog modal, câblé + affiché dans son constructeur), puis recharge la combo Album. */
     private void onOpenAlbumEditor() {
         Window owner = SwingUtilities.getWindowAncestor(view);
-
         AlbumEditor dlg = new AlbumEditor(owner);
-
+        AlbumEditorController controller = new AlbumEditorController(dlg, username);
+        controller.initController();
         if (dlg.getWidth() == 0 || dlg.getHeight() == 0) dlg.pack();
         dlg.setLocationRelativeTo(owner);
         dlg.setVisible(true);
-        dlg.dispose(); // libère les ressources
-
-        // Après fermeture, on peut rafraîchir les combos
+        dlg.dispose();
         preloadCombosFromDAO();
     }
 
     private void onValidateAndSave() {
         if (!validateForm()) return;
-
         String titre = getTitre();
         String artisteDisplay = getArtiste();
         String albumName = getAlbum();
         String mmss = getDuree();
-
         Artiste artiste = findOrCreateArtist(artisteDisplay);
         Album album = findOrCreateAlbum(albumName);
         float minutes = mmSsToFloatMinutes(mmss);
-
         if (current == null) {
             List<Artiste> artistes = new ArrayList<>();
             if (artiste != null) artistes.add(artiste);
@@ -223,25 +229,27 @@ public class MusicEditorController implements IController<MusicEditor> {
             musicDAO.update(current);
             if (listener != null) listener.onMusicUpdated(current);
         }
-
         JOptionPane.showMessageDialog(view, "Enregistré ✅", "Musique", JOptionPane.INFORMATION_MESSAGE);
         view.dispose();
     }
 
-    /* ===================== CHARGEMENT COMBOS (DAO) ===================== */
+    //************************************************//
+    //************** CHARGEMENT COMBOS (DAO) *********//
+    //************************************************//
     private void preloadCombosFromDAO() {
         var allArtistes = artisteDAO.getAll();
         java.util.Set<String> names = new java.util.LinkedHashSet<>();
         for (Artiste a : allArtistes) names.add(displayName(a));
         setArtistes(names);
-
         var allAlbums = albumDAO.getAll();
         java.util.Set<String> albums = new java.util.LinkedHashSet<>();
         for (Album a : allAlbums) albums.add(safe(a.getTitreAlbum()));
         setAlbums(albums);
     }
 
-    /* ===================== SETTERS (combos) ===================== */
+    //************************************************//
+    //************** SETTERS (combos) ****************//
+    //************************************************//
     public void setArtistes(Collection<String> artistes) {
         @SuppressWarnings("unchecked")
         DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) view.getArtisteCombo().getModel();
@@ -258,29 +266,26 @@ public class MusicEditorController implements IController<MusicEditor> {
         view.getAlbumCombo().setSelectedItem(null);
     }
 
-    /* ===================== GETTERS FORM ===================== */
+    //************************************************//
+    //************** GETTERS FORM *********************//
+    //************************************************//
     public String getSelectedImagePath() { return selectedImagePath; }
-
     public String getTitre() {
         String text = view.getTitreField().getText();
         return text == null ? "" : text.trim();
     }
-
     public String getArtiste() {
         Object sel = view.getArtisteCombo().getSelectedItem();
         return sel == null ? "" : sel.toString().trim();
     }
-
     public String getAlbum() {
         Object sel = view.getAlbumCombo().getSelectedItem();
         return sel == null ? "" : sel.toString().trim();
     }
-
     public String getDuree() {
         String text = view.getDureeField().getText();
         return text == null ? "" : text.trim();
     }
-
     public int getDurationInSeconds() {
         String d = getDuree();
         if (!d.matches("^\\d{1,2}:[0-5]\\d$")) return 0;
@@ -290,7 +295,9 @@ public class MusicEditorController implements IController<MusicEditor> {
         return minutes * 60 + seconds;
     }
 
-    /* ===================== VALIDATION ===================== */
+    //************************************************//
+    //************** VALIDATION FORM ******************//
+    //************************************************//
     public boolean validateForm() {
         if (getTitre().isEmpty()) { showError(view, "Le titre est requis.", "Erreur"); return false; }
         if (getArtiste().isEmpty()) { showError(view, "Sélectionne un artiste.", "Erreur"); return false; }
@@ -303,7 +310,9 @@ public class MusicEditorController implements IController<MusicEditor> {
         return true;
     }
 
-    /* ===================== HELPERS DAO & UI ===================== */
+    //************************************************//
+    //************** HELPERS DAO & UI ****************//
+    //************************************************//
     private Artiste findOrCreateArtist(String display) {
         String d = safe(display);
         if (d.isEmpty()) return null;
@@ -356,6 +365,9 @@ public class MusicEditorController implements IController<MusicEditor> {
         catch (Exception ignored) {}
     }
 
+    //************************************************//
+    //************** AFFICHAGE ERREUR/INFO ***********//
+    //************************************************//
     @Override
     public void showError(Component parent, String message, String title) {
         JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);

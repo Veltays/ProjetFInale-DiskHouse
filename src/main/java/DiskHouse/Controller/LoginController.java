@@ -1,3 +1,9 @@
+//************************************************//
+//************** LOGIN CONTROLLER ****************//
+//************************************************//
+// Contrôleur pour la gestion de la connexion utilisateur.
+// Gère la logique d'UI, la validation, l'authentification et la navigation.
+
 package DiskHouse.Controller;
 
 import DiskHouse.model.authentification.Authenticator;
@@ -13,66 +19,70 @@ import java.util.Objects;
 
 public class LoginController implements IController<Login> {
 
+    //************************************************//
+    //************** ATTRIBUTS ************************//
+    //************************************************//
     private final Login view;
     private final Authenticator authenticator;
 
-    /* ===================== CONSTRUCTEUR ===================== */
-
+    //************************************************//
+    //************** CONSTRUCTEUR *********************//
+    //************************************************//
     public LoginController(Login view) {
         this.view = Objects.requireNonNull(view);
         this.authenticator = new PropertiesAuthenticator();
     }
 
-    /* ===================== INIT CONTROLLER ===================== */
-
+    //************************************************//
+    //************** GETTEUR VUE **********************//
+    //************************************************//
     @Override
-    public Login getView() {
-        return view;
-    }
+    public Login getView() { return view; }
 
+    //************************************************//
+    //************** INITIALISATION *******************//
+    //************************************************//
     @Override
     public void initController() {
         view.getLoginButton().addActionListener(e -> onLogin());
         view.getNotRegisterButton().addActionListener(e -> onOpenRegister());
-
         addPlaceholder(view.getTextfieldusername(), "Nom d'utilisateur");
         addPlaceholder(view.getTextfieldpassword(), "Mot de passe");
     }
 
-    /* ===================== ACTIONS ===================== */
-
+    //************************************************//
+    //************** ACTIONS **************************//
+    //************************************************//
     private void onLogin() {
         String username = view.getTextfieldusername().getText().trim();
         String password = new String(view.getTextfieldpassword().getPassword());
-
         if (authenticator.authenticate(username, password)) {
             showInfo(view, "Connexion réussie !", "Succès");
-            openMainPage();
+            openMainPage(username);
         } else {
             showError(view, "Utilisateur ou mot de passe incorrect.", "Erreur");
         }
     }
 
     private void onOpenRegister() {
-        new DiskHouse.view.Register(); // ouverture de la fenêtre d'inscription
+        new DiskHouse.view.Register();
         view.dispose();
     }
 
-    private void openMainPage() {
+    private void openMainPage(String username) {
         MainPage mainPage = new MainPage();
-        MainPageController controller = new MainPageController(mainPage);
+        MainPageController controller = new MainPageController(mainPage, username);
         controller.initController();
-
         mainPage.setVisible(true);
         view.dispose();
     }
 
-    /* ===================== UTILS ===================== */
-
+    //************************************************//
+    //************** HELPERS **************************//
+    //************************************************//
     private void addPlaceholder(JTextField field, String placeholder) {
         field.setText(placeholder);
         field.setForeground(Color.GRAY);
-
         field.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -81,7 +91,6 @@ public class LoginController implements IController<Login> {
                     field.setForeground(Color.BLACK);
                 }
             }
-
             @Override
             public void focusLost(FocusEvent e) {
                 if (field.getText().isEmpty()) {
@@ -90,5 +99,15 @@ public class LoginController implements IController<Login> {
                 }
             }
         });
+    }
+
+    @Override
+    public void showError(Component parent, String message, String title) {
+        JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    @Override
+    public void showInfo(Component parent, String message, String title) {
+        JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
     }
 }

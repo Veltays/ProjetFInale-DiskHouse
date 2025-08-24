@@ -97,6 +97,22 @@ public class AlbumFileDAO implements IDAO<Album> {
         }
     }
 
+    /**
+     * Remplace tous les albums par la liste fournie (pour import/export global).
+     */
+    public void replaceAll(List<Album> albums) {
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
+            for (Album album : albums) {
+                dos.writeInt(album.getId());
+                dos.writeUTF(album.getTitreAlbum());
+                dos.writeUTF(album.getDateSortie().toString());
+                dos.writeUTF(album.getCoverImageURL());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void applyId(Object o, int id) {
         try {
             Field f = findIdField(o.getClass());

@@ -161,6 +161,25 @@ public class PlaylistFileDAO implements IDAO<Playlist> {
         }
     }
 
+    /**
+     * Remplace toutes les playlists par la liste fournie (pour import/export global).
+     */
+    public void replaceAll(List<Playlist> playlists) {
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
+            for (Playlist playlist : playlists) {
+                dos.writeInt(playlist.getId());
+                dos.writeUTF(playlist.getNomPlaylist());
+                dos.writeInt(playlist.getNombreMusique());
+                dos.writeUTF(playlist.getCoverImageURL() != null ? playlist.getCoverImageURL() : "");
+                for (Musique m : playlist.getMusiques()) {
+                    dos.writeInt(m.getId());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void applyId(Object o, int id) {
         try {
             Field f = findIdField(o.getClass());

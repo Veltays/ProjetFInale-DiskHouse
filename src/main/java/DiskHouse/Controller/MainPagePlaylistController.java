@@ -1,3 +1,9 @@
+//************************************************//
+//************** MAIN PAGE PLAYLIST CONTROLLER ****//
+//************************************************//
+// Contrôleur pour la gestion des playlists sur la page principale.
+// Gère l'initialisation de la table, les actions CRUD, le rendu personnalisé et la synchronisation avec le modèle.
+
 package DiskHouse.Controller;
 
 import DiskHouse.model.DAO.PlaylistFileDAO;
@@ -19,20 +25,22 @@ import java.util.function.Consumer;
 
 public class MainPagePlaylistController {
 
+    //************************************************//
+    //************** ATTRIBUTS ************************//
+    //************************************************//
     private final MainPageController root;
     private Consumer<Playlist> onSelectionChanged;
 
-    // ===== DAO =====
-    private final PlaylistFileDAO playlistDAO = new PlaylistFileDAO("data/playlists.dat");
-
-    /* ===================== CONSTRUCTEUR ===================== */
-
+    //************************************************//
+    //************** CONSTRUCTEUR *********************//
+    //************************************************//
     public MainPagePlaylistController(MainPageController root) {
         this.root = root;
     }
 
-    /* ===================== INIT TABLE ===================== */
-
+    //************************************************//
+    //************** INITIALISATION TABLE *************//
+    //************************************************//
     public void initPlaylistTable(JTable table) {
         String[] columns = {"ID", "Nom", "# Titres", "Image (URL)"};
         DefaultTableModel model = new DefaultTableModel(columns, 0) {
@@ -123,8 +131,9 @@ public class MainPagePlaylistController {
         column.setResizable(false);
     }
 
-    /* ===================== ACTIONS CRUD (persistantes) ===================== */
-
+    //************************************************//
+    //************** ACTIONS CRUD *********************//
+    //************************************************//
     public void wireButtons() {
         if (root.getView().getAjouterPlaylistButton() != null) {
             root.getView().getAjouterPlaylistButton().addActionListener(e -> onAddPlaylist());
@@ -149,7 +158,7 @@ public class MainPagePlaylistController {
                 new PlaylistEditorController.Listener() {
                     @Override public void onPlaylistCreated(Playlist created) {
                         // Persist
-                        playlistDAO.add(created);
+                        root.getPlaylistDAO().add(created);
 
                         // Mémoire + UI
                         root.getPlaylists().add(created);
@@ -184,7 +193,7 @@ public class MainPagePlaylistController {
 
                     @Override public void onPlaylistUpdated(Playlist updated) {
                         // Persist
-                        playlistDAO.update(updated);
+                        root.getPlaylistDAO().update(updated);
 
                         // UI refresh
                         loadPlaylistsInto(playlistTable, root.getPlaylists(), onSelectionChanged);
@@ -224,7 +233,7 @@ public class MainPagePlaylistController {
         if (confirm != JOptionPane.OK_OPTION) return;
 
         // Persist
-        playlistDAO.delete(String.valueOf(selected.getId()));
+        root.getPlaylistDAO().delete(String.valueOf(selected.getId()));
 
         // Mémoire + UI
         root.getPlaylists().remove(selected);
@@ -233,8 +242,9 @@ public class MainPagePlaylistController {
         if (onSelectionChanged != null) onSelectionChanged.accept(getSelectedPlaylist(playlistTable));
     }
 
-    /* ===================== RENDERERS ===================== */
-
+    //************************************************//
+    //************** RENDERERS ************************//
+    //************************************************//
     static class PlaylistCellRenderer extends JPanel implements javax.swing.table.TableCellRenderer {
         private final JLabel cover = new JLabel();
         private final JLabel title = new JLabel();
@@ -294,8 +304,9 @@ public class MainPagePlaylistController {
         }
     }
 
-    /* ===================== UTILS ===================== */
-
+    //************************************************//
+    //************** HELPERS / UTILS ******************//
+    //************************************************//
     static ImageIcon loadScaledIcon(String urlOrPath, int w, int h, Image fallback) {
         Image img = null;
         try {

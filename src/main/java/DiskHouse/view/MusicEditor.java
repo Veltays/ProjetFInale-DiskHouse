@@ -59,20 +59,23 @@ public class MusicEditor extends JDialog {
     // éviter de rebranchement multiple du contrôleur
     private boolean controllerWired = false;
 
+    private String username;
+
     /** Constructeur modale, attaché à une fenêtre parente (recommandé). */
-    public MusicEditor(Window owner) {
-        this(owner, true);
+    public MusicEditor(Window owner, String username) {
+        this(owner, true, username);
     }
 
     /** Constructeur sans parent (fallback / démo). */
-    public MusicEditor() { this(null, true); }
+    public MusicEditor(String username) { this(null, true, username); }
 
     /**
      * Constructeur avancé : possibilité de désactiver l'auto‑wiring du contrôleur
      * pour pouvoir injecter un Listener depuis l'extérieur.
      */
-    public MusicEditor(Window owner, boolean autoWireController) {
+    public MusicEditor(Window owner, boolean autoWireController, String username) {
         super(owner, "DiskHouse - Music Editor", ModalityType.APPLICATION_MODAL);
+        this.username = username;
         $$$setupUI$$$();                // crée TOUT (y compris les boutons)
         setContentPane(mainPanel);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -84,16 +87,16 @@ public class MusicEditor extends JDialog {
         setLocationRelativeTo(owner);
 
         if (autoWireController) {
-            wireController(); // version interne, sans listener
+            wireController(username); // version interne, sans listener
         }
 
         cancelButton.addActionListener(e -> dispose());
     }
 
     /** Instancie et initialise le contrôleur une seule fois (sans listener). */
-    private void wireController() {
+    public void wireController(String username) {
         if (controllerWired) return;
-        new MusicEditorController(this).initController();
+        new MusicEditorController(this, username).initController();
         controllerWired = true;
     }
 
@@ -101,9 +104,9 @@ public class MusicEditor extends JDialog {
      * Variante : branche le contrôleur avec un Listener fourni par l'appelant (MainPage).
      * Renvoie l'instance créée pour que l'appelant puisse appeler openForCreate/openForEdit.
      */
-    public MusicEditorController wireControllerWith(MusicEditorController.Listener listener) {
+    public MusicEditorController wireControllerWith(String username, MusicEditorController.Listener listener) {
         if (controllerWired) return null;
-        MusicEditorController c = new MusicEditorController(this, listener);
+        MusicEditorController c = new MusicEditorController(this, username, listener);
         c.initController();
         controllerWired = true;
         return c;
@@ -445,6 +448,6 @@ public class MusicEditor extends JDialog {
 
     /** Petite démo indépendante : ouvre le dialog sans parent. */
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MusicEditor().setVisible(true));
+        SwingUtilities.invokeLater(() -> new MusicEditor("demoUser").setVisible(true));
     }
 }

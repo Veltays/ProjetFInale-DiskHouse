@@ -26,11 +26,7 @@ public class MainPage extends JFrame {
     // === Menu ===
     private JMenuItem logoutMenuItem;
     private JMenuItem exportCsvMenuItem;
-    private JMenuItem exportTxtMenuItem;
     private JMenuItem exportXmlMenuItem;
-    private JMenuItem exportJsonMenuItem;
-    private JMenuItem colorBlackMenuItem;
-    private JMenuItem colorWhiteMenuItem;
 
     // === Menu Date ===
     private JMenuItem datePatternMenuItem;
@@ -41,9 +37,7 @@ public class MainPage extends JFrame {
 
     // === Menu Import ===
     private JMenuItem importCsvMenuItem;
-    private JMenuItem importTxtMenuItem;
     private JMenuItem importXmlMenuItem;
-    private JMenuItem importJsonMenuItem;
 
     public MainPage() {
         setTitle("DiskHouse");
@@ -108,21 +102,9 @@ public class MainPage extends JFrame {
         JMenu exportMenu = new JMenu("Export");
         menuBar.add(exportMenu);
         exportCsvMenuItem = new JMenuItem("CSV");
-        exportTxtMenuItem = new JMenuItem("TXT");
         exportXmlMenuItem = new JMenuItem("XML");
-        exportJsonMenuItem = new JMenuItem("JSON");
         exportMenu.add(exportCsvMenuItem);
-        exportMenu.add(exportTxtMenuItem);
         exportMenu.add(exportXmlMenuItem);
-        exportMenu.add(exportJsonMenuItem);
-
-        // Menu Couleur
-        JMenu colorMenu = new JMenu("Couleur");
-        menuBar.add(colorMenu);
-        colorBlackMenuItem = new JMenuItem("Noir");
-        colorWhiteMenuItem = new JMenuItem("Blanc");
-        colorMenu.add(colorBlackMenuItem);
-        colorMenu.add(colorWhiteMenuItem);
 
         // Menu Format Date
         JMenu dateMenu = new JMenu("Format Date");
@@ -143,13 +125,9 @@ public class MainPage extends JFrame {
         JMenu importMenu = new JMenu("Import");
         menuBar.add(importMenu);
         importCsvMenuItem = new JMenuItem("CSV");
-        importTxtMenuItem = new JMenuItem("TXT");
         importXmlMenuItem = new JMenuItem("XML");
-        importJsonMenuItem = new JMenuItem("JSON");
         importMenu.add(importCsvMenuItem);
-        importMenu.add(importTxtMenuItem);
         importMenu.add(importXmlMenuItem);
-        importMenu.add(importJsonMenuItem);
 
         // ❌ Pas de logique métier ici → le contrôleur branchera les listeners
     }
@@ -183,13 +161,10 @@ public class MainPage extends JFrame {
     public JButton getSupprimerMusiqueButton() { return SupprimerMusique; }
     public JButton getModifierMusiqueButton() { return ModifierMusique; }
 
-    // Getters Menu Session / Export / Couleur
+    // Getters Menu Session / Export
     public JMenuItem getLogoutMenuItem() { return logoutMenuItem; }
     public JMenuItem getExportCsvMenuItem() { return exportCsvMenuItem; }
-    public JMenuItem getExportTxtMenuItem() { return exportTxtMenuItem; }
     public JMenuItem getExportXmlMenuItem() { return exportXmlMenuItem; }
-    public JMenuItem getColorBlackMenuItem() { return colorBlackMenuItem; }
-    public JMenuItem getColorWhiteMenuItem() { return colorWhiteMenuItem; }
 
     // Getters Menu Date
     public JMenuItem getDatePatternMenuItem() { return datePatternMenuItem; }
@@ -197,13 +172,10 @@ public class MainPage extends JFrame {
     public JMenuItem getDateLongMenuItem() { return dateLongMenuItem; }
     public JMenuItem getDateMediumMenuItem() { return dateMediumMenuItem; }
     public JMenuItem getDateShortMenuItem() { return dateShortMenuItem; }
-    public JMenuItem getExportJsonMenuItem() { return exportJsonMenuItem; }
 
     // Getters Menu Import
     public JMenuItem getImportCsvMenuItem() { return importCsvMenuItem; }
-    public JMenuItem getImportTxtMenuItem() { return importTxtMenuItem; }
     public JMenuItem getImportXmlMenuItem() { return importXmlMenuItem; }
-    public JMenuItem getImportJsonMenuItem() { return importJsonMenuItem; }
 
     public JComboBox<String> getDateTypeComboBox() {
         return dateTypeComboBox;

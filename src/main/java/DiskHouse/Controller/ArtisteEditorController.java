@@ -1,10 +1,16 @@
+//************************************************//
+//************** ARTISTE EDITOR CONTROLLER *******//
+//************************************************//
+// Contrôleur pour la création et l'édition d'un artiste.
+// Gère la logique d'UI, la validation, la persistance DAO et les interactions utilisateur.
+
 package DiskHouse.Controller;
 
 import DiskHouse.model.DAO.AlbumFileDAO;
 import DiskHouse.model.DAO.ArtisteFileDAO;
 import DiskHouse.model.entity.Album;
 import DiskHouse.model.entity.Artiste;
-import DiskHouse.view.AlbumEditor;   // <-- ouvert par le bouton +
+import DiskHouse.view.AlbumEditor;
 import DiskHouse.view.ArtisteEditor;
 
 import javax.swing.*;
@@ -16,24 +22,45 @@ import java.util.Set;
 
 public class ArtisteEditorController implements IController<ArtisteEditor> {
 
+    //************************************************//
+    //************** ATTRIBUTS ************************//
+    //************************************************//
     private final ArtisteEditor view;
+    private final String username;
+    private final ArtisteFileDAO artisteDAO;
+    private final AlbumFileDAO albumDAO;
+    private Artiste currentArtiste; // null en création
+    private String selectedPortraitPath; // chemin/URL de portrait (optionnel)
 
-    private final ArtisteFileDAO artisteDAO = new ArtisteFileDAO("data/artistes.dat");
-    private final AlbumFileDAO   albumDAO   = new AlbumFileDAO("data/albums.dat");
-
-    private Artiste currentArtiste;     // null en création
-    private String portraitPathOrUrl;   // chemin/URL de portrait (optionnel)
-
-    public ArtisteEditorController(ArtisteEditor view) {
+    //************************************************//
+    //************** CONSTRUCTEUR *********************//
+    //************************************************//
+    public ArtisteEditorController(ArtisteEditor view, String username) {
         this.view = Objects.requireNonNull(view);
-        initController();
+        this.username = username;
+        this.artisteDAO = new ArtisteFileDAO("data/" + username + "_artistes.dat");
+        this.albumDAO = new AlbumFileDAO("data/" + username + "_albums.dat");
     }
 
-    @Override public ArtisteEditor getView() { return view; }
+    //************************************************//
+    //************** GETTEUR VUE **********************//
+    //************************************************//
+    @Override
+    public ArtisteEditor getView() { return view; }
 
+    //************************************************//
+    //************** INITIALISATION *******************//
+    //************************************************//
     @Override
     public void initController() {
-        // Gestion du clic sur le portrait pour choisir une image
+        initPortraitImageListener();
+        initAlbumButtons();
+        initSaveButton();
+    }
+
+    private void initPortraitImageListener() {
+        view.getPortraitLabel().setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        view.getPortraitLabel().setToolTipText("Cliquer pour choisir une image de portrait");
         view.getPortraitLabel().addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -45,18 +72,22 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
                         String imageUrl = file.toURI().toString();
                         view.setPortraitImage(imageUrl);
                         view.getPortraitLabel().putClientProperty("imageURL", imageUrl);
+                        selectedPortraitPath = imageUrl;
                     }
                 }
             }
         });
+    }
 
+    private void initAlbumButtons() {
         // Bouton + : ouvrir AlbumEditor
         view.getAddAlbumButtonView().addActionListener(e -> {
             Window owner = SwingUtilities.getWindowAncestor(view.getOkButton());
-            AlbumEditor dialog = new AlbumEditor(owner); // JDialog modal (ta classe vue)
-            dialog.setVisible(true); // Le contrôleur parent décidera plus tard comment récupérer les données
+            AlbumEditor dialog = new AlbumEditor(owner);
+            AlbumEditorController controller = new AlbumEditorController(dialog, username);
+            controller.initController();
+            dialog.setVisible(true);
         });
-
         // Bouton 🗑 : supprimer l’album sélectionné dans la liste
         view.getRemoveAlbumButtonView().addActionListener(e -> {
             JList<String> list = view.getAlbumsList();
@@ -66,15 +97,16 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
                 return;
             }
             ListModel<String> lm = list.getModel();
-            if (lm instanceof DefaultListModel<String> dm) {
+            if (lm instanceof DefaultListModel<?> dm) {
                 dm.remove(idx);
                 view.ensureAlbumsPlaceholder();
             }
         });
+    }
 
-        // Bouton Enregistrer : sauvegarder l'artiste et fermer si succès
+    private void initSaveButton() {
         view.getOkButton().addActionListener(e -> {
-            Artiste saved = saveToDAO();
+            Artiste saved = saveArtisteToDAO();
             if (saved != null) {
                 showInfo(view, "Artiste enregistré avec succès !", "Succès");
                 view.dispose();
@@ -82,43 +114,47 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
         });
     }
 
+    //************************************************//
+    //************** OUVERTURE ************************//
+    //************************************************//
     public void openForCreate(Window parent) {
         currentArtiste = null;
-        portraitPathOrUrl = null;
+        selectedPortraitPath = null;
         view.setArtistName("");
         view.getAlbumsList().setModel(new DefaultListModel<>());
         view.setPortraitImage((String) null);
         view.getPortraitLabel().putClientProperty("imageURL", null);
         view.ensureAlbumsPlaceholder();
-        show(parent);
+        showDialog(parent);
     }
 
     public void openForEdit(Window parent, Artiste artiste, List<Album> albumsOrNull) {
         currentArtiste = Objects.requireNonNull(artiste);
-        portraitPathOrUrl = null;
-        loadData(artiste, albumsOrNull, null);
-        show(parent);
+        selectedPortraitPath = null;
+        loadArtisteData(artiste, albumsOrNull, null);
+        showDialog(parent);
     }
 
     public void openForEditById(Window parent, String artisteId) {
         Artiste a = artisteDAO.getById(artisteId);
         if (a == null) {
-            JOptionPane.showMessageDialog(view, "Artiste introuvable (id=" + artisteId + ").",
-                    "Information", JOptionPane.WARNING_MESSAGE);
+            showError(view, "Artiste introuvable (id=" + artisteId + ").", "Information");
             return;
         }
         currentArtiste = a;
-        portraitPathOrUrl = null;
+        selectedPortraitPath = null;
         List<Album> allAlbums = albumDAO.getAll();
-        loadData(a, allAlbums, null);
+        loadArtisteData(a, allAlbums, null);
         view.setPortraitImage(a.getImageURL());
         view.getPortraitLabel().putClientProperty("imageURL", a.getImageURL());
-        show(parent);
+        showDialog(parent);
     }
 
-    public void loadData(Artiste artiste, List<Album> albums, Image portrait) {
+    //************************************************//
+    //************** CHARGEMENT DONNÉES ****************//
+    //************************************************//
+    public void loadArtisteData(Artiste artiste, List<Album> albums, Image portrait) {
         view.setArtistName(artiste != null ? artiste.getPseudo() : "");
-
         DefaultListModel<String> model = new DefaultListModel<>();
         Set<String> titlesSeen = new LinkedHashSet<>();
         if (albums != null) {
@@ -131,23 +167,25 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
         }
         view.getAlbumsList().setModel(model);
         view.ensureAlbumsPlaceholder();
-
         // Afficher l'image de l'artiste si elle existe
         if (artiste != null && artiste.getImageURL() != null && !artiste.getImageURL().isBlank()) {
             view.setPortraitImage(artiste.getImageURL());
             view.getPortraitLabel().putClientProperty("imageURL", artiste.getImageURL());
         } else if (portrait != null) {
             view.setPortraitImage(portrait);
-        } else if (portraitPathOrUrl != null) {
-            Image loaded = tryLoadImage(portraitPathOrUrl);
+        } else if (selectedPortraitPath != null) {
+            Image loaded = tryLoadImage(selectedPortraitPath);
             if (loaded != null) view.setPortraitImage(loaded);
         } else {
             view.setPortraitImage((String) null);
         }
     }
 
-    public Artiste saveToDAO() {
-        String pseudo = safe(view.getArtistNameField().getText());
+    //************************************************//
+    //************** PERSISTANCE DAO ******************//
+    //************************************************//
+    public Artiste saveArtisteToDAO() {
+        String pseudo = safeTrim(view.getArtistNameField().getText());
         if (pseudo.equals("Choisir un artiste")) pseudo = "";
         if (pseudo.isEmpty()) {
             showError(view, "Le pseudo de l'artiste ne peut pas être vide.", "Erreur");
@@ -165,7 +203,10 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
         return currentArtiste;
     }
 
-    public void show(Window parent) {
+    //************************************************//
+    //************** AFFICHAGE DIALOG *****************//
+    //************************************************//
+    public void showDialog(Window parent) {
         view.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         if (view.getWidth() == 0 || view.getHeight() == 0) view.pack();
         view.setLocationRelativeTo(parent);
@@ -174,7 +215,10 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
         view.requestFocus();
     }
 
-    private static String safe(String s) { return s == null ? "" : s.trim(); }
+    //************************************************//
+    //************** HELPERS **************************//
+    //************************************************//
+    private static String safeTrim(String s) { return s == null ? "" : s.trim(); }
 
     public static Image tryLoadImage(String path) {
         if (path == null || path.isBlank()) return null;
@@ -182,7 +226,6 @@ public class ArtisteEditorController implements IController<ArtisteEditor> {
         return (icon.getIconWidth() > 0 && icon.getIconHeight() > 0) ? icon.getImage() : null;
     }
 
-    /* ==== Implémentations IController ==== */
     @Override
     public void showError(Component parent, String message, String title) {
         JOptionPane.showMessageDialog(parent, message, title, JOptionPane.ERROR_MESSAGE);

@@ -81,6 +81,21 @@ public class ArtisteFileDAO implements IDAO<Artiste> {
         saveAll(artistes);
     }
 
+    /**
+     * Remplace tous les artistes par la liste fournie (pour import/export global).
+     */
+    public void replaceAll(List<Artiste> artistes) {
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
+            for (Artiste artiste : artistes) {
+                dos.writeInt(artiste.getId());
+                dos.writeUTF(artiste.getPseudo());
+                dos.writeUTF(artiste.getImageURL() == null ? "" : artiste.getImageURL());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void saveAll(List<Artiste> artistes) {
         try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, false))) {
             for (Artiste artiste : artistes) {
